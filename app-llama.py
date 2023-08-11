@@ -57,7 +57,7 @@ async def factory():
     ).send()
     await cl.Avatar(
         name="va.ai",
-        url="https://media.discordapp.net/attachments/1073252913226465380/1139636833068777482/kr4nos_voice_icon_neon_colors_clean_pixel_art_ed96e4a6-b05e-4656-90ca-e4ac9f154b9c.png?width=1372&height=1372",
+        url="https://github.com/seanbetts/va.ai/blob/f100e27c5a31dfacdb7296b7afcad8ea3a33ebee/assets/chatAvatar.png?raw=true",
     ).send()
 
 
