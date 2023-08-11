@@ -2,3 +2,4 @@
 .env
 .chainlit
 __pycache__
+credentials.json

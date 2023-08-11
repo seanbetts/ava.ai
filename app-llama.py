@@ -53,7 +53,7 @@ async def factory():
     cl.user_session.set("query_engine", query_engine)
     await cl.Avatar(
         name="seanbetts@icloud.com",
-        url="https://media.discordapp.net/attachments/1073252913226465380/1139636833068777482/kr4nos_voice_icon_neon_colors_clean_pixel_art_ed96e4a6-b05e-4656-90ca-e4ac9f154b9c.png?width=1372&height=1372",
+        url="https://github.com/seanbetts/va.ai/blob/main/assets/seanbetts.png?raw=true",
     ).send()
     await cl.Avatar(
         name="va.ai",
