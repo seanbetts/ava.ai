@@ -71,7 +71,7 @@ async def start():
 
     await asyncio.sleep(2)
     await cl.Message(
-        content=f"**Hi!**\n\nYou are currently using the following settings:\n\n**Model:** {settings['Model']}\n**Temperature:** {settings['Temperature']}\n**Streaming:** {settings['Streaming']}\n\nYou can update this in the settings below ↓", actions=actions).send()
+        content=f"**👋 Hi!**\n\nI'm your personal assistant and can help you with lots of different tasks.\nI can help you find answers, get content from documents or webpages, summarise content and much more\n**Just ask me a question or upload a file to get started!**\n\nYou are currently using the following settings:\n\n**Model:** {settings['Model']}\n**Temperature:** {settings['Temperature']}\n**Streaming:** {settings['Streaming']}\n\nYou can update these in the settings below ↓", actions=actions).send()
 
 @cl.on_message
 async def main(message):
