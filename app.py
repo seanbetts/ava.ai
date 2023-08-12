@@ -24,7 +24,6 @@ template = """Question: {question}
 
 Answer: Let's think step by step."""
 
-
 @cl.on_chat_start
 async def start():
     settings = await cl.ChatSettings(
