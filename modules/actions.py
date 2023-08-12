@@ -32,7 +32,7 @@ async def on_action(action):
 
     # Sending an image with the file name
     elements = [
-        cl.Image(name="Wordcloud", display="inline", content=image_bytes),
+        cl.Image(name="Wordcloud", display="inline", size="large", content=image_bytes),
         cl.File(name="Wordcloud.png", content=image_bytes, display="inline")
     ]
 
@@ -88,17 +88,23 @@ async def on_action(action):
 @cl.action_callback("Summarise")
 async def on_action(action):
 
-    ## Add LLM query etc. here ##
+    # Retrieve the chain from the user session
+    llm_chain = cl.user_session.get("llm_chain")
+    cb = cl.AsyncLangchainCallbackHandler(
+        stream_final_answer=True, answer_prefix_tokens=["FINAL", "ANSWER"]
+    )
+    cb.answer_reached = True
 
-    elements = [
-        cl.Text(name="Here is your summary:", content="This is the summary text", display="inline")
-    ]
+    # Call the chain asynchronously
+    res = await llm_chain.acall(f"Write me a summary of this text:\n{action.value}", callbacks=[cb])
+    answer = res["text"]
 
     actions = [
         cl.Action(name="Copy", value="This is the summary text", description="Copy Text!"),
+        cl.Action(name="Save To Knowledgebase", value=answer, description="Save To Knowledgebase!"),
     ]
 
-    await cl.Message(content=f"Retrieved text from {action.value}", elements=elements, actions=actions).send()
+    await cl.Message(content=f"**Here is your summary:**\n\n{answer}", actions=actions).send()
 
     # Optionally remove the action button from the chatbot user interface
     # await action.remove()
@@ -107,17 +113,23 @@ async def on_action(action):
 @cl.action_callback("Bulletpoint Summary")
 async def on_action(action):
 
-    ## Add LLM query etc. here ##
+    # Retrieve the chain from the user session
+    llm_chain = cl.user_session.get("llm_chain")
+    cb = cl.AsyncLangchainCallbackHandler(
+        stream_final_answer=True, answer_prefix_tokens=["FINAL", "ANSWER"]
+    )
+    cb.answer_reached = True
 
-    elements = [
-        cl.Text(name="Here is your bulletpoint summary:", content="This is the bulletpoint summary text", display="inline")
-    ]
+    # Call the chain asynchronously
+    res = await llm_chain.acall(f"Write me a bulletpoint summary of this text:\n{action.value}", callbacks=[cb])
+    answer = res["text"]
 
     actions = [
         cl.Action(name="Copy", value="This is the bulletpoint summary text", description="Copy Text!"),
+        cl.Action(name="Save To Knowledgebase", value=answer, description="Save To Knowledgebase!"),
     ]
 
-    await cl.Message(content=f"Retrieved text from {action.value}", elements=elements, actions=actions).send()
+    await cl.Message(content=f"**Here is your bulletpoint summary:**\n\n{answer}", actions=actions).send()
 
     # Optionally remove the action button from the chatbot user interface
     # await action.remove()
@@ -128,7 +140,7 @@ async def on_action(action):
 
     ## Add LLM query etc. here ##
 
-    await cl.Message("Knowledge Saved!").send()
+    await cl.Message("**Knowledge Saved!**").send()
 
     # Optionally remove the action button from the chatbot user interface
     # await action.remove()
