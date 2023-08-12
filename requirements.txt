@@ -2,6 +2,7 @@
 chainlit
 llama-index
 langchain
+tiktoken
 
 ###--TOOLS--###
 trafilatura
