@@ -11,29 +11,22 @@ from llama_index import (
     load_index_from_storage,
 )
 from langchain.chat_models import ChatOpenAI
+from langchain import PromptTemplate, LLMChain
 
 import chainlit as cl
 from chainlit.input_widget import Select, Switch, Slider
 from modules import actions
 from modules.chatbot import handle_url_message
 
-openai.api_key = os.environ.get("OPENAI_API_KEY")
+openai.api_key = os.environ.get("OPENAI_API_KEY") or exit("OPENAI_API_KEY not set!")
 
-try:
-    # rebuild storage context
-    storage_context = StorageContext.from_defaults(persist_dir="./storage")
-    # load index
-    index = load_index_from_storage(storage_context)
-except:
-    from llama_index import GPTVectorStoreIndex, SimpleDirectoryReader
+template = """Question: {question}
 
-    documents = SimpleDirectoryReader("./data").load_data()
-    index = GPTVectorStoreIndex.from_documents(documents)
-    index.storage_context.persist()
+Answer: Let's think step by step."""
 
 
 @cl.on_chat_start
-async def factory():
+async def start():
     settings = await cl.ChatSettings(
         [
             Select(
@@ -54,29 +47,19 @@ async def factory():
         ]
     ).send()
 
-    llm_predictor = LLMPredictor(
-        llm=ChatOpenAI(
-            temperature=settings["Temperature"],
-            model_name=settings["Model"],
-            streaming=settings["Streaming"],
-        ),
-    )
-    service_context = ServiceContext.from_defaults(
-        llm_predictor=llm_predictor,
-        chunk_size=512,
-        callback_manager=CallbackManager([cl.LlamaIndexCallbackHandler()]),
-    )
+    # Instantiate the chain for that user session
+    model = ChatOpenAI(model=settings["Model"], temperature=settings["Temperature"], streaming=settings["Streaming"])
+    prompt = PromptTemplate(template=template, input_variables=["question"])
+    llm_chain = LLMChain(prompt=prompt, llm=model, verbose=True)
 
-    query_engine = index.as_query_engine(
-        service_context=service_context,
-        streaming=True,
-    )
+    # Store the chain in the user session
+    cl.user_session.set("llm_chain", llm_chain)
 
-    cl.user_session.set("query_engine", query_engine)
     await cl.Avatar(
         name="seanbetts@icloud.com",
         url="https://github.com/seanbetts/va.ai/blob/main/assets/seanbetts.png?raw=true",
     ).send()
+    
     await cl.Avatar(
         name="va.ai",
         url="https://github.com/seanbetts/va.ai/blob/f100e27c5a31dfacdb7296b7afcad8ea3a33ebee/assets/chatAvatar.png?raw=true",
@@ -86,44 +69,50 @@ async def factory():
         cl.Action(name="Upload File", value="temp", description="Upload File!"),
     ]
 
-    print(settings["Temperature"])
-
     await asyncio.sleep(2)
     await cl.Message(
         content=f"**Hi!**\n\nYou are currently using the following settings:\n**Model:** {settings['Model']}\n**Temperature:** {settings['Temperature']}\n**Streaming:** {settings['Streaming']}\n\nYou can update this in the settings below ↓", actions=actions).send()
 
 @cl.on_message
 async def main(message):
-    query_engine = cl.user_session.get("query_engine")  # type: RetrieverQueryEngine
+    # Retrieve the chain from the user session
+    llm_chain = cl.user_session.get("llm_chain")
+    cb = cl.AsyncLangchainCallbackHandler(
+        stream_final_answer=True, answer_prefix_tokens=["FINAL", "ANSWER"]
+    )
+    cb.answer_reached = True
 
     if "http" in message or "www" in message:
         await handle_url_message(message)
 
     else: 
-        response = await cl.make_async(query_engine.query)(message)
+         # Call the chain asynchronously
+        res = await llm_chain.acall(message, callbacks=[cb])
+        answer = res["text"]
 
-        response_message = cl.Message(content="")
+        actions = [
+            cl.Action(name="Upload File", value="temp", description="Upload File!"),
+        ]
 
-        for token in response.response_gen:
-            await response_message.stream_token(token=token)
+        # Do any post processing here
 
-        if response.response_txt:
-            response_message.content = response.response_txt
-
-        await response_message.send()
+        # "res" is a Dict. For this chain, we get the response by reading the "text" key.
+        # This varies from chain to chain, you should check which key to read.
+        await cl.Message(content=answer, actions=actions).send()
 
 @cl.on_settings_update
 async def setup_agent(settings):
+    # Instantiate the chain for that user session
+    model = ChatOpenAI(model=settings["Model"], temperature=settings["Temperature"], streaming=settings["Streaming"])
+    prompt = PromptTemplate(template=template, input_variables=["question"])
+    llm_chain = LLMChain(prompt=prompt, llm=model, verbose=True)
+
+    # Store the chain in the user session
+    cl.user_session.set("llm_chain", llm_chain)
+
     actions = [
         cl.Action(name="Upload File", value="temp", description="Upload File!"),
     ]
 
     await cl.Message(
         content=f"You are now using the following settings:\n**Model:** {settings['Model']}\n**Temperature:** {settings['Temperature']}\n**Streaming:** {settings['Streaming']}", actions=actions).send()
-
-    # Instantiate the chain for that user session
-    # prompt = PromptTemplate(template=template, input_variables=["question"])
-    # llm_chain = LLMChain(prompt=prompt, llm=OpenAI(temperature=settings["Temperature"]), verbose=True)
-
-    # Store the chain in the user session
-    # cl.user_session.set("llm_chain", llm_chain)
