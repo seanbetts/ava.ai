@@ -1,5 +1,16 @@
+###--CORE--##
 chainlit
 llama-index
 langchain
-pypdf
+
+###--TOOLS--###
 trafilatura
+wordcloud
+matplotlib
+pyperclip
+PyPDF2
+python-pptx
+python-docx
+pandas
+openpyxl
+tabulate

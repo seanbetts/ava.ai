@@ -1,58 +1,88 @@
-from langchain import PromptTemplate, OpenAI, LLMChain
+import os
+import openai
+
+from llama_index.query_engine.retriever_query_engine import RetrieverQueryEngine
+from llama_index.callbacks.base import CallbackManager
+from llama_index import (
+    LLMPredictor,
+    ServiceContext,
+    StorageContext,
+    load_index_from_storage,
+)
 from langchain.chat_models import ChatOpenAI
 
 import chainlit as cl
-from chainlit.input_widget import Select, Switch, Slider
+from modules import actions
+from modules.chatbot import handle_file_upload, handle_url_message, handle_image_message
 
-template = """Question: {question}
+openai.api_key = os.environ.get("OPENAI_API_KEY")
 
-Answer: Let's think step by step."""
+try:
+    # rebuild storage context
+    storage_context = StorageContext.from_defaults(persist_dir="./storage")
+    # load index
+    index = load_index_from_storage(storage_context)
+except:
+    from llama_index import GPTVectorStoreIndex, SimpleDirectoryReader
 
+    documents = SimpleDirectoryReader("./data").load_data()
+    index = GPTVectorStoreIndex.from_documents(documents)
+    index.storage_context.persist()
 
-@cl.on_message
-async def main(message: str):
-    # Retrieve the chain from the user session
-    llm_chain = cl.user_session.get("llm_chain")  # type: LLMChain
-
-    # Call the chain asynchronously
-    res = await llm_chain.acall(message, callbacks=[cl.AsyncLangchainCallbackHandler()])
-
-    # Do any post processing here
-
-    # "res" is a Dict. For this chain, we get the response by reading the "text" key.
-    # This varies from chain to chain, you should check which key to read.
-    await cl.Message(content=res["text"]).send()
 
 @cl.on_chat_start
-async def start():
-    settings = await cl.ChatSettings(
-        [
-            # Select(
-            #     id="Model",
-            #     label="OpenAI - Model",
-            #     values=["gpt-3.5-turbo", "gpt-3.5-turbo-16k", "gpt-4", "gpt-4-32k"],
-            #     initial_index=0,
-            # ),
-            #Switch(id="Streaming", label="OpenAI - Stream Tokens", initial=True),
-            Slider(
-                id="Temperature",
-                label="OpenAI - Temperature",
-                initial=1,
-                min=0,
-                max=2,
-                step=0.1,
-            ),
-        ]
+async def factory():
+    llm_predictor = LLMPredictor(
+        llm=ChatOpenAI(
+            temperature=0,
+            model_name="gpt-3.5-turbo",
+            streaming=True,
+        ),
+    )
+    service_context = ServiceContext.from_defaults(
+        llm_predictor=llm_predictor,
+        chunk_size=512,
+        callback_manager=CallbackManager([cl.LlamaIndexCallbackHandler()]),
+    )
+
+    query_engine = index.as_query_engine(
+        service_context=service_context,
+        streaming=True,
+    )
+
+    cl.user_session.set("query_engine", query_engine)
+    await cl.Avatar(
+        name="seanbetts@icloud.com",
+        url="https://github.com/seanbetts/va.ai/blob/main/assets/seanbetts.png?raw=true",
+    ).send()
+    await cl.Avatar(
+        name="va.ai",
+        url="https://github.com/seanbetts/va.ai/blob/f100e27c5a31dfacdb7296b7afcad8ea3a33ebee/assets/chatAvatar.png?raw=true",
     ).send()
 
 
-@cl.on_settings_update
-async def setup_agent(settings):
-    print("Setup agent with following settings: ", settings)
+@cl.on_message
+async def main(message):
+    query_engine = cl.user_session.get("query_engine")  # type: RetrieverQueryEngine
+    if "file" in message or "document" in message:
+        await handle_file_upload()
 
-    # Instantiate the chain for that user session
-    prompt = PromptTemplate(template=template, input_variables=["question"])
-    llm_chain = LLMChain(prompt=prompt, llm=OpenAI(temperature=settings["Temperature"]), verbose=True)
+    elif "http" in message or "www" in message:
+        await handle_url_message(message)
 
-    # Store the chain in the user session
-    cl.user_session.set("llm_chain", llm_chain)
+    elif "image" in message:
+        await handle_image_message()
+
+    else: 
+        response = await cl.make_async(query_engine.query)(message)
+
+        response_message = cl.Message(content="")
+
+        for token in response.response_gen:
+            await response_message.stream_token(token=token)
+
+        if response.response_txt:
+            response_message.content = response.response_txt
+
+        await response_message.send()
+
