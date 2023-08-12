@@ -1,14 +1,12 @@
-# Welcome to Chainlit! 🚀🤖
+# 🤖 Welcome to your personal assistant
 
-Hi there, Developer! 👋 We're excited to have you on board. Chainlit is a powerful tool designed to help you prototype, debug and share applications built on top of LLMs.
+**👋 Hi there!**
 
-## Useful Links 🔗
+💁 I've been built to help you with every day tasks. Currently I can help you with the following:
+- I can ingest lots of different documents, data, and images 📄📊🖼️
+- I can get content from webpages 🌐
+- I can produce summaries and wordclouds of your content 📝☁️
+- I can copy content to your clipboard 📋
+- I can save content to your own personal knowledgebase 📚
 
-- **Documentation:** Get started with our comprehensive [Chainlit Documentation](https://docs.chainlit.io) 📚
-- **Discord Community:** Join our friendly [Chainlit Discord](https://discord.gg/ZThrUxbAYw) to ask questions, share your projects, and connect with other developers! 💬
-
-We can't wait to see what you create with Chainlit! Happy coding! 💻😊
-
-## Welcome screen
-
-To modify the welcome screen, edit the `chainlit.md` file at the root of your project. If you do not want a welcome screen, just leave this file empty.
+If you have any issues or feature requests please visit the [GitHub Repository](https://github.com/seanbetts/va.ai)
