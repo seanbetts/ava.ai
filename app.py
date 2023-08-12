@@ -31,7 +31,7 @@ async def start():
             Select(
                 id="Model",
                 label="OpenAI - Model",
-                values=["gpt-3.5-turbo", "gpt-3.5-turbo-16k", "gpt-4", "gpt-4-32k"],
+                values=["gpt-3.5-turbo", "gpt-3.5-turbo-16k", "gpt-4"],
                 initial_index=0,
             ),
             Slider(
@@ -61,7 +61,7 @@ async def start():
     
     await cl.Avatar(
         name="va.ai",
-        url="https://github.com/seanbetts/va.ai/blob/f100e27c5a31dfacdb7296b7afcad8ea3a33ebee/assets/chatAvatar.png?raw=true",
+        url="https://github.com/seanbetts/va.ai/blob/main/assets/microphone.png?raw=true",
     ).send()
 
     actions = [

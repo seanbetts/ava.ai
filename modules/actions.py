@@ -5,11 +5,15 @@ import chainlit as cl
 from llama_index import TrafilaturaWebReader
 
 from modules.chatbot import handle_file_upload
+from .utils import extract_first_200_words, num_tokens_from_string
 
 import io
 from wordcloud import WordCloud, STOPWORDS
 import matplotlib.pyplot as plt
 import pyperclip
+import requests
+import PyPDF2
+from io import BytesIO
 
 ###--CREATE WORDCLOUD--###
 @cl.action_callback("Create Wordcloud")
@@ -47,21 +51,58 @@ async def on_action(action):
 ###--GET WEBSITE CONTENT--###
 @cl.action_callback("Get Website Content")
 async def on_action(action):
-    documents = TrafilaturaWebReader().load_data([action.value])
+    if ".pdf" in action.value:
+        response = requests.get(action.value)
+        response.raise_for_status()
 
-    elements = [
-        cl.Text(name="Here is the text from the webpage:", content=f"{documents[0].text}", display="inline")
-    ]
+        # Convert the response content to a BytesIO object
+        pdf_content = BytesIO(response.content)
 
-    actions = [
-        cl.Action(name="Summarise", value=f"{documents[0].text}", description="Summarise!"),
-        cl.Action(name="Bulletpoint Summary", value=f"{documents[0].text}", description="Bulletpoint Summary!"),
-        cl.Action(name="Create Wordcloud", value=f"{documents[0].text}", description="Create Wordcloud!"),
-        cl.Action(name="Copy", value=f"{documents[0].text}", description="Copy Text!"),
-        cl.Action(name="Save To Knowledgebase", value=f"{documents[0].text}", description="Save To Knowledgebase!"),
-    ]
+        # Read the PDF with PyPDF2
+        pdf_reader = PyPDF2.PdfReader(pdf_content)
 
-    await cl.Message(content=f"Retrieved text from {action.value}", elements=elements, actions=actions).send()
+        text = []
+        for page_num in range(len(pdf_reader.pages)):
+            page = pdf_reader.pages[page_num]
+            text.append(page.extract_text())
+        pdf_text = "\n".join(text)
+        extracted_text = extract_first_200_words(pdf_text)
+
+        elements = [
+            # cl.Pdf(name="PDF", display="inline", content=uploaded_file.content),
+            cl.Text(name="Here are the first 200 words from the document:", content=extracted_text, display="inline")
+        ]
+
+        actions = [
+            cl.Action(name="Summarise", value=f"{pdf_text}", description="Summarise!"),
+            cl.Action(name="Bulletpoint Summary", value=f"{pdf_text}", description="Bulletpoint Summary!"),
+            cl.Action(name="Create Wordcloud", value=f"{pdf_text}", description="Create Wordcloud!"),
+            cl.Action(name="Copy", value=f"{pdf_text}", description="Copy Text!"),
+            cl.Action(name="Save To Knowledgebase", value=f"{pdf_text}", description="Save To Knowledgebase!"),
+        ]
+
+        tokens = num_tokens_from_string(pdf_text, "gpt-3.5-turbo")
+
+        await cl.Message(
+            content=f"`The PDF contains {format(len(pdf_text), ',')} characters which is {format(tokens, ',')} tokens.", elements=elements, actions=actions
+        ).send()
+
+    else:
+        documents = TrafilaturaWebReader().load_data([action.value])
+
+        elements = [
+            cl.Text(name="Here is the text from the webpage:", content=f"{documents[0].text}", display="inline")
+        ]
+
+        actions = [
+            cl.Action(name="Summarise", value=f"{documents[0].text}", description="Summarise!"),
+            cl.Action(name="Bulletpoint Summary", value=f"{documents[0].text}", description="Bulletpoint Summary!"),
+            cl.Action(name="Create Wordcloud", value=f"{documents[0].text}", description="Create Wordcloud!"),
+            cl.Action(name="Copy", value=f"{documents[0].text}", description="Copy Text!"),
+            cl.Action(name="Save To Knowledgebase", value=f"{documents[0].text}", description="Save To Knowledgebase!"),
+        ]
+
+        await cl.Message(content=f"Retrieved text from {action.value}", elements=elements, actions=actions).send()
 
     # Optionally remove the action button from the chatbot user interface
     await action.remove()
