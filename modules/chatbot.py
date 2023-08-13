@@ -6,7 +6,7 @@ from .file_handlers import handle_text_file, handle_doc_file, handle_pdf_file, h
 async def handle_file_upload(model):
     files = None
     while files is None:
-        files = await cl.AskFileMessage(content="Please upload a document or image.", accept=["text/plain", "application/pdf", "application/vnd.openxmlformats-officedocument.presentationml.presentation", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "text/csv", "image/jpeg", "image/gif", "image/png", "image/webp"]).send()
+        files = await cl.AskFileMessage(content="Please upload a document or image.", max_size_mb=100, accept=["text/plain", "application/pdf", "application/vnd.openxmlformats-officedocument.presentationml.presentation", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "text/csv", "image/jpeg", "image/gif", "image/png", "image/webp"]).send()
     uploaded_file = files[0]
 
     # Handling a plain text file

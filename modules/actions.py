@@ -84,14 +84,16 @@ async def on_action(action):
         tokens = num_tokens_from_string(pdf_text, "gpt-3.5-turbo")
 
         await cl.Message(
-            content=f"`The PDF contains {format(len(pdf_text), ',')} characters which is {format(tokens, ',')} tokens.", elements=elements, actions=actions
+            content=f"The PDF contains {format(len(pdf_text), ',')} characters which is c.{format(tokens, ',')} tokens.", elements=elements, actions=actions
         ).send()
 
     else:
         documents = TrafilaturaWebReader().load_data([action.value])
+        tokens = num_tokens_from_string(documents[0].text, "gpt-3.5-turbo")
+        extracted_text = extract_first_200_words(documents[0].text)
 
         elements = [
-            cl.Text(name="Here is the text from the webpage:", content=f"{documents[0].text}", display="inline")
+            cl.Text(name="Here are the first 200 words from the webpage:", content=extracted_text, display="inline")
         ]
 
         actions = [
@@ -102,7 +104,7 @@ async def on_action(action):
             cl.Action(name="Save To Knowledgebase", value=f"{documents[0].text}", description="Save To Knowledgebase!"),
         ]
 
-        await cl.Message(content=f"Retrieved text from {action.value}", elements=elements, actions=actions).send()
+        await cl.Message(content=f"The webpage contains {format(len(documents[0].text), ',')} characters which is c.{format(tokens, ',')} tokens.", elements=elements, actions=actions).send()
 
     # Optionally remove the action button from the chatbot user interface
     await action.remove()

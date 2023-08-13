@@ -30,7 +30,7 @@ async def handle_text_file(uploaded_file, model):
     tokens = num_tokens_from_string(text, model)
 
     await cl.Message(
-        content=f"`{uploaded_file.name}` uploaded, it contains {format(len(text), ',')} characters which is {format(tokens, ',')} tokens", elements=elements, actions=actions
+        content=f"`{uploaded_file.name}` uploaded, it contains {format(len(text), ',')} characters which is c.{format(tokens, ',')} tokens", elements=elements, actions=actions
     ).send()
 
 ###--HANDLE DOCs--###
@@ -58,7 +58,7 @@ async def handle_doc_file(uploaded_file, model):
     tokens = num_tokens_from_string(doc_text, model)
 
     await cl.Message(
-        content=f"`{uploaded_file.name}` uploaded, it contains {format(len(doc_text), ',')} characters which is {format(tokens, ',')} tokens", elements=elements, actions=actions
+        content=f"`{uploaded_file.name}` uploaded, it contains {format(len(doc_text), ',')} characters which is c.{format(tokens, ',')} tokens", elements=elements, actions=actions
     ).send()
 
 ###--HANDLE PDFs--###
@@ -90,7 +90,7 @@ async def handle_pdf_file(uploaded_file, model):
     tokens = num_tokens_from_string(pdf_text, model)
 
     await cl.Message(
-        content=f"`{uploaded_file.name}` uploaded, it contains {format(len(pdf_text), ',')} characters which is {format(tokens, ',')} tokens.", elements=elements, actions=actions
+        content=f"`{uploaded_file.name}` uploaded, it contains {format(len(pdf_text), ',')} characters which is c.{format(tokens, ',')} tokens.", elements=elements, actions=actions
     ).send()
 
 ###--HANDLE PPTs--###
@@ -120,7 +120,7 @@ async def handle_ppt_file(uploaded_file, model):
     tokens = num_tokens_from_string(ppt_text, model)
 
     await cl.Message(
-        content=f"`{uploaded_file.name}` uploaded, it contains {format(len(ppt_text), ',')} characters which is {format(tokens, ',')} tokens", elements=elements, actions=actions
+        content=f"`{uploaded_file.name}` uploaded, it contains {format(len(ppt_text), ',')} characters which is c.{format(tokens, ',')} tokens", elements=elements, actions=actions
     ).send()
 
 ###--HANDLE XLSXs--###

@@ -1,7 +1,7 @@
-# 🤖 Welcome to your personal assistant
+# 🧑‍🦲 Welcome to Ava
 
 ### **👋 Hi there!**
-💁 I've been built to help you with every day tasks. Currently I can help you with the following:
+I'm Ava and I can help you with every day tasks. Currently I can help you with the following:
 - I can ingest lots of different documents, data, and images 📄📊🖼️
 - I can get content from webpages 🌐
 - I can produce summaries and wordclouds of your content 📝☁️
@@ -10,4 +10,4 @@
 
 🔐 Any data saved is completely yours and saved into a local database that no one else can access.
 
-If you have any issues or feature requests please visit the [GitHub Repository](https://github.com/seanbetts/va.ai)
+If you have any issues or feature requests please visit the [GitHub Repository](https://github.com/seanbetts/ava.ai)
