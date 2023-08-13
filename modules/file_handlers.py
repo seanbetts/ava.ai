@@ -20,11 +20,11 @@ async def handle_text_file(uploaded_file, model):
     ]
 
     actions = [
-        cl.Action(name="Summarise", value=f"{documents[0].text}", description="Summarise!"),
-        cl.Action(name="Bulletpoint Summary", value=f"{documents[0].text}", description="Bulletpoint Summary!"),
-        cl.Action(name="Create Wordcloud", value=f"{documents[0].text}", description="Create Wordcloud!"),
-        cl.Action(name="Copy", value=f"{documents[0].text}", description="Copy Text!"),
-        cl.Action(name="Save To Knowledgebase", value=f"{documents[0].text}", description="Save To Knowledgebase!"),
+        cl.Action(name="Summarise", value=f"{text}", description="Summarise!"),
+        cl.Action(name="Bulletpoint Summary", value=f"{text}", description="Bulletpoint Summary!"),
+        cl.Action(name="Create Wordcloud", value=f"{text}", description="Create Wordcloud!"),
+        cl.Action(name="Copy", value=f"{text}", description="Copy Text!"),
+        cl.Action(name="Save To Knowledgebase", value=f"{text}", description="Save To Knowledgebase!"),
     ]
 
     tokens = num_tokens_from_string(text, model)

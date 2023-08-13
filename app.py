@@ -2,16 +2,13 @@ import os
 import openai
 import asyncio
 
-from llama_index.query_engine.retriever_query_engine import RetrieverQueryEngine
-from llama_index.callbacks.base import CallbackManager
-from llama_index import (
-    LLMPredictor,
-    ServiceContext,
-    StorageContext,
-    load_index_from_storage,
-)
+from langchain.agents import Tool
+from langchain.agents import AgentType
+from langchain.memory import ConversationBufferMemory
 from langchain.chat_models import ChatOpenAI
+from langchain.agents import initialize_agent
 from langchain import PromptTemplate, LLMChain
+from langchain.utilities import SerpAPIWrapper
 
 import chainlit as cl
 from chainlit.input_widget import Select, Switch, Slider
@@ -25,13 +22,28 @@ template = """Question: {question}
 
 Answer: Let's think step by step."""
 
+search = SerpAPIWrapper()
+tools = [
+    Tool(
+        name = "Current Search",
+        func=search.run,
+        description="useful for when you need to answer questions about current events or the current state of the world"
+    ),
+]
+
 @cl.on_chat_start
 async def start():
     settings = await cl.ChatSettings(
         [
             Select(
-                id="Model",
-                label="OpenAI - Model",
+                id="Chat_Model",
+                label="Chat Model",
+                values=["gpt-3.5-turbo", "gpt-3.5-turbo-16k", "gpt-4"],
+                initial_index=0,
+            ),
+            Select(
+                id="Action_Model",
+                label="Action Model",
                 values=["gpt-3.5-turbo", "gpt-3.5-turbo-16k", "gpt-4"],
                 initial_index=0,
             ),
@@ -48,13 +60,18 @@ async def start():
     ).send()
 
     # Instantiate the chain for that user session
-    model = ChatOpenAI(model=settings["Model"], temperature=settings["Temperature"], streaming=settings["Streaming"])
+    memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+    chat_model = ChatOpenAI(model=settings['Chat_Model'], temperature=settings["Temperature"], streaming=settings["Streaming"])
+    action_model = ChatOpenAI(model=settings['Action_Model'], temperature=settings["Temperature"], streaming=settings["Streaming"])
     prompt = PromptTemplate(template=template, input_variables=["question"])
-    llm_chain = LLMChain(prompt=prompt, llm=model, verbose=True)
+    llm_chain = LLMChain(prompt=prompt, llm=action_model, verbose=True)
+    agent_chain = initialize_agent(tools, chat_model, agent=AgentType.CHAT_CONVERSATIONAL_REACT_DESCRIPTION, verbose=True, memory=memory)
 
     # Store the model & chain in the user session
-    cl.user_session.set("model", settings["Model"])
+    cl.user_session.set("chat_model", settings['Chat_Model'])
+    cl.user_session.set("action_model", settings['Action_Model'])
     cl.user_session.set("llm_chain", llm_chain)
+    cl.user_session.set("agent_chain", agent_chain)
 
     await cl.Avatar(
         name="seanbetts@icloud.com",
@@ -72,12 +89,12 @@ async def start():
 
     await asyncio.sleep(2)
     await cl.Message(
-        content=f"**👋 Hi!**\n\nI'm Ava and can help you with lots of different tasks.\nI can help you find answers, get content from documents or webpages, summarise content and much more.\n**Just ask me a question or upload a file to get started!**\n\nYou are currently using the following settings:\n\n**Model:** {settings['Model']}\n**Max Tokens:** {format(get_token_limit(settings['Model']), ',')}\n**Temperature:** {settings['Temperature']}\n**Streaming:** {settings['Streaming']}\n\nYou can update these settings in the chatbox below ↓", actions=actions).send()
+        content=f"**👋 Hi!**\n\nI'm **Ava** and can help you with lots of different tasks.\nI can help you find answers, get content from documents or webpages, summarise content and much more.\n\nI have a **Chat Model** for when we're chatting and an **Action Model** that runs actions.\n An action runs when you click a button below a chat message.\nAn action button looks like the **Upload File** button below ↓\n\n**Just ask me a question or upload a file to get started!**\n\nYou are currently using the following settings:\n\n**Chat Model:** {settings['Chat_Model']} (max tokens of {format(get_token_limit(settings['Chat_Model']), ',')})\n**Action Model:** {settings['Action_Model']} (max tokens of {format(get_token_limit(settings['Action_Model']), ',')})\n**Temperature:** {settings['Temperature']}\n**Streaming:** {settings['Streaming']}\n\nYou can update these settings in the chatbox below ↓", actions=actions).send()
 
 @cl.on_message
 async def main(message):
     # Retrieve the chain from the user session
-    llm_chain = cl.user_session.get("llm_chain")
+    agent_chain = cl.user_session.get("agent_chain")
 
     # Set up message streaming
     cb = cl.AsyncLangchainCallbackHandler(
@@ -91,8 +108,7 @@ async def main(message):
 
     else: 
          # Call the chain asynchronously
-        res = await llm_chain.acall(message, callbacks=[cb])
-        answer = res["text"]
+        res = agent_chain.run(message, callbacks=[cb])
 
         actions = [
             cl.Action(name="Upload File", value="temp", description="Upload File!"),
@@ -100,22 +116,27 @@ async def main(message):
 
         # Do any post processing here
 
-        await cl.Message(content=answer, actions=actions).send()
+        await cl.Message(content=res, actions=actions).send()
 
 @cl.on_settings_update
 async def setup_agent(settings):
     # Instantiate the chain for that user session
-    model = ChatOpenAI(model=settings["Model"], temperature=settings["Temperature"], streaming=settings["Streaming"])
+    memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+    chat_model = ChatOpenAI(model=settings['Chat_Model'], temperature=settings["Temperature"], streaming=settings["Streaming"])
+    action_model = ChatOpenAI(model=settings['Action_Model'], temperature=settings["Temperature"], streaming=settings["Streaming"])
     prompt = PromptTemplate(template=template, input_variables=["question"])
-    llm_chain = LLMChain(prompt=prompt, llm=model, verbose=True)
+    llm_chain = LLMChain(prompt=prompt, llm=action_model, verbose=True)
+    agent_chain = initialize_agent(tools, chat_model, agent=AgentType.CHAT_CONVERSATIONAL_REACT_DESCRIPTION, verbose=True, memory=memory)
 
-    # Store the chain in the user session
+    # Store the model & chain in the user session
+    cl.user_session.set("chat_model", settings['Chat_Model'])
+    cl.user_session.set("action_model", settings['Action_Model'])
     cl.user_session.set("llm_chain", llm_chain)
-    cl.user_session.set("model", settings["Model"])
+    cl.user_session.set("agent_chain", agent_chain)
 
     actions = [
         cl.Action(name="Upload File", value="temp", description="Upload File!"),
     ]
 
     await cl.Message(
-        content=f"You are now using the following settings:\n**Model:** {settings['Model']}\n**Max Tokens:** {format(get_token_limit(settings['Model']), ',')}\n**Temperature:** {settings['Temperature']}\n**Streaming:** {settings['Streaming']}", actions=actions).send()
+        content=f"You are now using the following settings:\n**Chat Model:** {settings['Chat_Model']} (max tokens of {format(get_token_limit(settings['Chat_Model']), ',')})\n**Action Model:** {settings['Action_Model']} (max tokens of {format(get_token_limit(settings['Action_Model']), ',')})\n**Temperature:** {settings['Temperature']}\n**Streaming:** {settings['Streaming']}", actions=actions).send()

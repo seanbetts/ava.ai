@@ -1,7 +1,7 @@
 # Welcome to Ava
 ![Ava](https://github.com/seanbetts/ava.ai/blob/main/assets/avatar%20-%20sqircle.png?raw=true)
 ### **👋 Hi there!**
-I'm Ava and I can help you with every day tasks. Currently I can help you with the following:
+I'm **Ava** and I can help you with every day tasks. Currently I can help you with the following:
 - I can ingest lots of different documents, data, and images 📄📊🖼️
 - I can get content from webpages 🌐
 - I can produce summaries and wordclouds of your content 📝☁️

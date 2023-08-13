@@ -34,13 +34,21 @@ async def on_action(action):
     # Convert the buffered image to bytes for sending
     image_bytes = buf.getvalue()
 
+    # Save image to user session
+    cl.user_session.set("image", image_bytes)
+
     # Sending an image with the file name
     elements = [
         cl.Image(name="Wordcloud", display="inline", size="large", content=image_bytes),
         cl.File(name="Wordcloud.png", content=image_bytes, display="inline")
     ]
 
-    await cl.Message(content="Here's your wordcloud:", elements=elements).send()
+    actions = [
+        cl.Action(name="Save To Knowledgebase", value=f"{image_bytes}", description="Save To Knowledgebase!"),
+        cl.Action(name="Upload File", value="temp", description="Upload File!"),
+    ]
+
+    await cl.Message(content="Here's your wordcloud:", elements=elements, actions=actions).send()
 
     # Clear the current wordcloud figure
     plt.clf()
@@ -82,7 +90,7 @@ async def on_action(action):
             cl.Action(name="Upload File", value="temp", description="Upload File!"),
         ]
 
-        model = cl.user_session.get("model")
+        model = cl.user_session.get("action_model")
         tokens = num_tokens_from_string(pdf_text, model)
         token_limit = get_token_limit(model)
         is_over = is_over_token_limit(tokens, token_limit)
@@ -93,7 +101,7 @@ async def on_action(action):
 
     else:
         documents = TrafilaturaWebReader().load_data([action.value])
-        model = cl.user_session.get("model")
+        model = cl.user_session.get("action_model")
         tokens = num_tokens_from_string(documents[0].text, model)
         token_limit = get_token_limit(model)
         is_over = is_over_token_limit(tokens, token_limit)
@@ -125,12 +133,12 @@ async def on_action(action):
     await cl.Message(content=f"Text copied to clipboard").send()
 
     # Optionally remove the action button from the chatbot user interface
-    await action.remove()
+    # await action.remove()
 
 ###--UPLOAD FILE--###
 @cl.action_callback("Upload File")
 async def on_action(action):
-    model = cl.user_session.get("model")
+    model = cl.user_session.get("action_model")
     await handle_file_upload(model)
 
     # Optionally remove the action button from the chatbot user interface
@@ -152,7 +160,7 @@ async def on_action(action):
     answer = res["text"]
 
     actions = [
-        cl.Action(name="Copy", value="This is the summary text", description="Copy Text!"),
+        cl.Action(name="Copy", value=answer, description="Copy Text!"),
         cl.Action(name="Save To Knowledgebase", value=answer, description="Save To Knowledgebase!"),
         cl.Action(name="Upload File", value="temp", description="Upload File!"),
     ]
@@ -178,7 +186,7 @@ async def on_action(action):
     answer = res["text"]
 
     actions = [
-        cl.Action(name="Copy", value="This is the bulletpoint summary text", description="Copy Text!"),
+        cl.Action(name="Copy", value=answer, description="Copy Text!"),
         cl.Action(name="Save To Knowledgebase", value=answer, description="Save To Knowledgebase!"),
         cl.Action(name="Upload File", value="temp", description="Upload File!"),
     ]
@@ -236,7 +244,7 @@ async def on_action(action):
     {res['data']}
     """
 
-    model = cl.user_session.get("model")
+    model = cl.user_session.get("action_model")
     tokens = num_tokens_from_string(prompt, model)
     token_limit = get_token_limit(model)
 
@@ -259,7 +267,7 @@ async def on_action(action):
         answer = response["text"]
 
         actions = [
-            cl.Action(name="Copy", value="This is the bulletpoint summary text", description="Copy Text!"),
+            cl.Action(name="Copy", value=answer, description="Copy Text!"),
             cl.Action(name="Save To Knowledgebase", value=answer, description="Save To Knowledgebase!"),
             cl.Action(name="Upload File", value="temp", description="Upload File!"),
         ]
