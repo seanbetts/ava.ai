@@ -61,7 +61,7 @@ async def start():
     
     await cl.Avatar(
         name="va.ai",
-        url="https://github.com/seanbetts/va.ai/blob/main/assets/microphone.png?raw=true",
+        url="https://github.com/seanbetts/ava.ai/blob/main/assets/avatar.png?raw=true",
     ).send()
 
     actions = [
