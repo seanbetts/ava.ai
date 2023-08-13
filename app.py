@@ -17,6 +17,7 @@ import chainlit as cl
 from chainlit.input_widget import Select, Switch, Slider
 from modules import actions
 from modules.chatbot import handle_url_message
+from modules.utils import get_token_limit
 
 openai.api_key = os.environ.get("OPENAI_API_KEY") or exit("OPENAI_API_KEY not set!")
 
@@ -51,7 +52,8 @@ async def start():
     prompt = PromptTemplate(template=template, input_variables=["question"])
     llm_chain = LLMChain(prompt=prompt, llm=model, verbose=True)
 
-    # Store the chain in the user session
+    # Store the model & chain in the user session
+    cl.user_session.set("model", settings["Model"])
     cl.user_session.set("llm_chain", llm_chain)
 
     await cl.Avatar(
@@ -70,17 +72,20 @@ async def start():
 
     await asyncio.sleep(2)
     await cl.Message(
-        content=f"**👋 Hi!**\n\nI'm Ava and can help you with lots of different tasks.\nI can help you find answers, get content from documents or webpages, summarise content and much more.\n**Just ask me a question or upload a file to get started!**\n\nYou are currently using the following settings:\n\n**Model:** {settings['Model']}\n**Temperature:** {settings['Temperature']}\n**Streaming:** {settings['Streaming']}\n\nYou can update these in the settings below ↓", actions=actions).send()
+        content=f"**👋 Hi!**\n\nI'm Ava and can help you with lots of different tasks.\nI can help you find answers, get content from documents or webpages, summarise content and much more.\n**Just ask me a question or upload a file to get started!**\n\nYou are currently using the following settings:\n\n**Model:** {settings['Model']}\n**Max Tokens:** {format(get_token_limit(settings['Model']), ',')}\n**Temperature:** {settings['Temperature']}\n**Streaming:** {settings['Streaming']}\n\nYou can update these settings in the chatbox below ↓", actions=actions).send()
 
 @cl.on_message
 async def main(message):
     # Retrieve the chain from the user session
     llm_chain = cl.user_session.get("llm_chain")
+
+    # Set up message streaming
     cb = cl.AsyncLangchainCallbackHandler(
         stream_final_answer=True, answer_prefix_tokens=["FINAL", "ANSWER"]
     )
     cb.answer_reached = True
 
+    # Detect if a URL was included in the chat message from the user
     if "http" in message or "www" in message:
         await handle_url_message(message)
 
@@ -95,8 +100,6 @@ async def main(message):
 
         # Do any post processing here
 
-        # "res" is a Dict. For this chain, we get the response by reading the "text" key.
-        # This varies from chain to chain, you should check which key to read.
         await cl.Message(content=answer, actions=actions).send()
 
 @cl.on_settings_update
@@ -108,10 +111,11 @@ async def setup_agent(settings):
 
     # Store the chain in the user session
     cl.user_session.set("llm_chain", llm_chain)
+    cl.user_session.set("model", settings["Model"])
 
     actions = [
         cl.Action(name="Upload File", value="temp", description="Upload File!"),
     ]
 
     await cl.Message(
-        content=f"You are now using the following settings:\n**Model:** {settings['Model']}\n**Temperature:** {settings['Temperature']}\n**Streaming:** {settings['Streaming']}", actions=actions).send()
+        content=f"You are now using the following settings:\n**Model:** {settings['Model']}\n**Max Tokens:** {format(get_token_limit(settings['Model']), ',')}\n**Temperature:** {settings['Temperature']}\n**Streaming:** {settings['Streaming']}", actions=actions).send()
