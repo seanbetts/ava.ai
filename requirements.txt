@@ -15,3 +15,5 @@ python-docx
 pandas
 openpyxl
 tabulate
+wolframalpha
+google-search-results

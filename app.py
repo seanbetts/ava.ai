@@ -8,13 +8,14 @@ from langchain.memory import ConversationBufferMemory
 from langchain.chat_models import ChatOpenAI
 from langchain.agents import initialize_agent
 from langchain import PromptTemplate, LLMChain
-from langchain.utilities import SerpAPIWrapper
+from langchain.utilities.wolfram_alpha import WolframAlphaAPIWrapper
 
 import chainlit as cl
 from chainlit.input_widget import Select, Switch, Slider
 from modules import actions
 from modules.chatbot import handle_url_message
 from modules.utils import get_token_limit
+from modules.tools import NewsSearchTool, WikipediaSearchTool, YouTubeSearchTool, GoogleMapsSearchTool, GoogleImageSearchTool, GoogleSearchTool, SpotifySearchTool, TMDBSearchTool
 
 openai.api_key = os.environ.get("OPENAI_API_KEY") or exit("OPENAI_API_KEY not set!")
 
@@ -22,13 +23,71 @@ template = """Question: {question}
 
 Answer: Let's think step by step."""
 
-search = SerpAPIWrapper()
+search = GoogleSearchTool()
+news = NewsSearchTool()
+wikipedia = WikipediaSearchTool()
+youtube = YouTubeSearchTool()
+images = GoogleImageSearchTool()
+maps = GoogleMapsSearchTool()
+music = SpotifySearchTool()
+movie = TMDBSearchTool()
+wolfram = WolframAlphaAPIWrapper(wolfram_alpha_appid = os.environ.get("WOLFRAM_ALPHA_APPID"))
+
 tools = [
     Tool(
-        name = "Current Search",
-        func=search.run,
-        description="useful for when you need to answer questions about current events or the current state of the world"
+        name = "Maths",
+        func=wolfram.run,
+        description="Use this when you want need to do maths or make some calculations. Use this more than any other tool if the question is about maths or making calculations. The input to this should be numbers in a maths expression",
+        return_direct=True
     ),
+    Tool(
+        name = "Video Search",
+        func=youtube.run,
+        description="Use this when you want to search for YouTube videos or movie trailers. Use this more than Internet Search if the question is about videos or trailers. The input to this should be a single search term.",
+        return_direct=True
+    ),
+    Tool(
+        name = "Map & Location Search",
+        func=maps.run,
+        description="Use this when you want to search for a map or get a location. Use this more than any other tool if the question is about locations or maps. The input to this should be a single search term.",
+        return_direct=True
+    ),
+    Tool(
+        name = "Image Search",
+        func=images.run,
+        description="Use this when you want to search for images. Use this more than any other tool if the question is about images. The input to this should be a single search term.",
+        return_direct=True
+    ),
+    Tool(
+        name = "Wikipedia Search",
+        func=wikipedia.run,
+        description="Use this when you want to search wikipedia about things you have no knowledge of. Use this more than Internet Search if the question is about Wikipedia. The input to this should be a single search term.",
+        return_direct=True
+    ),
+    Tool(
+        name = "Internet Search",
+        func=search.run,
+        description="Use this when you want to search the internet to answer questions about things you have no knowledge of. The input to this should be a single search term.",
+        return_direct=True
+    ),
+    Tool(
+        name = "Latest News Search",
+        func=news.run,
+        description="Use this when you want to get information about the latest news, top news headlines or current news stories. Use this more than Internet Search if the question is about News. The input should be a question in natural language that this API can answer.",
+        return_direct=True
+    ),
+    Tool(
+        name = "Music Search",
+        func= music.run,
+        description="Use this when you want to search for music. Use this more than any other tool if the question is about music. The input to this should be a single search term.",
+        return_direct=True
+    ),
+    Tool(
+        name = "Movie & TV Search",
+        func= movie.run,
+        description="Use this when you want to search for a movie, tv show or actor. Use this more than any other tool if the question is about movies, tv shows or actors. The input to this should be a single search term.",
+        return_direct=True
+    )
 ]
 
 @cl.on_chat_start
