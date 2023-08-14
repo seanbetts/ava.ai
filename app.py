@@ -19,9 +19,10 @@ from modules.tools import NewsSearchTool, WikipediaSearchTool, YouTubeSearchTool
 
 openai.api_key = os.environ.get("OPENAI_API_KEY") or exit("OPENAI_API_KEY not set!")
 
-template = """Question: {question}
-
-Answer: Let's think step by step."""
+template = """
+Question: {question}
+Answer: Let's think step by step.
+"""
 
 search = GoogleSearchTool()
 news = NewsSearchTool()
@@ -40,18 +41,18 @@ tools = [
         description="Use this when you want need to do maths or make some calculations. Use this more than any other tool if the question is about maths or making calculations. The input to this should be numbers in a maths expression",
         return_direct=True
     ),
-    Tool(
-        name = "Video Search",
-        func=youtube.run,
-        description="Use this when you want to search for YouTube videos or movie trailers. Use this more than Internet Search if the question is about videos or trailers. The input to this should be a single search term.",
-        return_direct=True
-    ),
-    Tool(
-        name = "Map & Location Search",
-        func=maps.run,
-        description="Use this when you want to search for a map or get a location. Use this more than any other tool if the question is about locations or maps. The input to this should be a single search term.",
-        return_direct=True
-    ),
+    # Tool(
+    #     name = "Video Search",
+    #     func=youtube.run,
+    #     description="Use this when you want to search for YouTube videos or movie trailers. Use this more than Internet Search if the question is about videos or trailers. The input to this should be a single search term.",
+    #     return_direct=True
+    # ),
+    # Tool(
+    #     name = "Map & Location Search",
+    #     func=maps.run,
+    #     description="Use this when you want to search for a map or get a location. Use this more than any other tool if the question is about locations or maps. The input to this should be a single search term.",
+    #     return_direct=True
+    # ),
     Tool(
         name = "Image Search",
         func=images.run,
@@ -76,12 +77,12 @@ tools = [
         description="Use this when you want to get information about the latest news, top news headlines or current news stories. Use this more than Internet Search if the question is about News. The input should be a question in natural language that this API can answer.",
         return_direct=True
     ),
-    Tool(
-        name = "Music Search",
-        func= music.run,
-        description="Use this when you want to search for music. Use this more than any other tool if the question is about music. The input to this should be a single search term.",
-        return_direct=True
-    ),
+    # Tool(
+    #     name = "Music Search",
+    #     func= music.run,
+    #     description="Use this when you want to search for music. Use this more than any other tool if the question is about music. The input to this should be a single search term.",
+    #     return_direct=True
+    # ),
     Tool(
         name = "Movie & TV Search",
         func= movie.run,
@@ -89,6 +90,10 @@ tools = [
         return_direct=True
     )
 ]
+
+@cl.cache
+def get_memory():
+    return ConversationBufferMemory(memory_key="chat_history")
 
 @cl.on_chat_start
 async def start():
@@ -143,17 +148,24 @@ async def start():
     ).send()
 
     actions = [
-        cl.Action(name="Upload File", value="temp", description="Upload File!"),
+        cl.Action(name="Upload File", value="temp", description="Upload any file you'd like help with"),
     ]
 
     await asyncio.sleep(2)
     await cl.Message(
-        content=f"**👋 Hi!**\n\nI'm **Ava** and can help you with lots of different tasks.\nI can help you find answers, get content from documents or webpages, summarise content and much more.\n\nI have a **Chat Model** for when we're chatting and an **Action Model** that runs actions.\n An action runs when you click a button below a chat message.\nAn action button looks like the **Upload File** button below ↓\n\n**Just ask me a question or upload a file to get started!**\n\nYou are currently using the following settings:\n\n**Chat Model:** {settings['Chat_Model']} (max tokens of {format(get_token_limit(settings['Chat_Model']), ',')})\n**Action Model:** {settings['Action_Model']} (max tokens of {format(get_token_limit(settings['Action_Model']), ',')})\n**Temperature:** {settings['Temperature']}\n**Streaming:** {settings['Streaming']}\n\nYou can update these settings in the chatbox below ↓", actions=actions).send()
+        content=f"**👋 Hi!**\n\nI'm **Ava** and can help you with lots of different tasks.\nI can help you find answers, get content from documents or webpages, summarise content and much more.\n\nI have a **Chat Model** for when we're chatting and an **Action Model** that runs actions.\n An action runs when you click a button below a chat message.\nAn action button looks like the **Upload File** button below ↓\n\n**Just ask me a question or upload a file to get started!**\n\nYou are currently using the following settings:\n\n**Chat Model:** {settings['Chat_Model']} (max tokens of {format(get_token_limit(settings['Chat_Model']), ',')})\n**Action Model:** {settings['Action_Model']} (max tokens of {format(get_token_limit(settings['Action_Model']), ',')})\n**Temperature:** {settings['Temperature']}\n**Streaming:** {settings['Streaming']}\n\nYou can update these settings in the chatbox below ↓\n___", actions=actions).send()
 
 @cl.on_message
 async def main(message):
     # Retrieve the chain from the user session
     agent_chain = cl.user_session.get("agent_chain")
+
+    # Empty images in user session
+    cl.user_session.set("image1", None)
+    cl.user_session.set("image2", None)
+    cl.user_session.set("image3", None)
+    cl.user_session.set("image4", None)
+    cl.user_session.set("image5", None)
 
     # Set up message streaming
     cb = cl.AsyncLangchainCallbackHandler(
@@ -169,13 +181,31 @@ async def main(message):
          # Call the chain asynchronously
         res = agent_chain.run(message, callbacks=[cb])
 
+        if "Here are your images:" in res:
+            image1 = cl.user_session.get("image1")
+            image2 = cl.user_session.get("image2")
+            image3 = cl.user_session.get("image3")
+            image4 = cl.user_session.get("image4")
+            image5 = cl.user_session.get("image5")
+
+            elements = [
+                cl.Image(url=image1, name="Image 1", display="inline"),
+                cl.Image(url=image2, name="Image 2", display="inline"),
+                cl.Image(url=image3, name="Image 3", display="inline"),
+                cl.Image(url=image4, name="Image 4", display="inline"),
+                cl.Image(url=image5, name="Image 5", display="inline"),
+            ]
+
+        else:
+            elements = []
+
         actions = [
-            cl.Action(name="Upload File", value="temp", description="Upload File!"),
+            cl.Action(name="Upload File", value="temp", description="Upload any file you'd like help with"),
         ]
 
         # Do any post processing here
 
-        await cl.Message(content=res, actions=actions).send()
+        await cl.Message(content=f"{res}\n___", elements=elements, actions=actions).send()
 
 @cl.on_settings_update
 async def setup_agent(settings):
@@ -194,7 +224,7 @@ async def setup_agent(settings):
     cl.user_session.set("agent_chain", agent_chain)
 
     actions = [
-        cl.Action(name="Upload File", value="temp", description="Upload File!"),
+        cl.Action(name="Upload File", value="temp", description="Upload any file you'd like help with"),
     ]
 
     await cl.Message(

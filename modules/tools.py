@@ -7,6 +7,7 @@ import requests
 from requests.exceptions import JSONDecodeError
 from urllib.parse import quote
 from datetime import date, datetime, timedelta
+import chainlit as cl
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -39,17 +40,18 @@ class NewsSearchTool(BaseTool):
         json_response = response.json()
 
         # Limit the results to the top 5 articles
-        top_5_articles = json_response['articles'][:5]
-        json_response['articles'] = top_5_articles
+        top_10_articles = json_response['articles'][:10]
+        json_response['articles'] = top_10_articles
 
         # Generate an HTML ordered list
-        html_list_items = []
-        for i, article in enumerate(top_5_articles):
+        markdown_list_items = []
+        for i, article in enumerate(top_10_articles):
             source_name = article['source'].get('name') or article['source'].get('Name') or "Unknown"
-            html_list_items.append(f"<li><a class='text-primary' href='{article['url']}' target='_blank' style='text-decoration: none'>{article['title']} ({source_name})</a></li>")
-        html_list = f"<div class='card text-bg-light text-center'><div class='card-header text-uppercase pt-3 pb-2 px-3'><h2 class='text-uppercase'>{query}</h2></div><div class='card-body text-start pt-2 pb-1 px-2'><ol>" + "".join(html_list_items) + "</ol></div></div>"
-        
-        return html_list
+            markdown_list_items.append(f"1. {article['title']} [({source_name})]({article['url']})")
+
+        markdown_output = f"## {query}\n\n" + "\n".join(markdown_list_items)
+
+        return markdown_output
 
     async def _arun(self, query: str) -> str:
         """Use the tool asynchronously."""
@@ -96,19 +98,9 @@ class WikipediaSearchTool(BaseTool):
             wikiExtract = data.get('extract', 'No summary available')
             wikiImage = self.get_wiki_image(queryUnderscored, response)
 
-            html = f"""
-    <div class='card text-bg-light text-center'>
-        <a href="{wikiURL}" target="_blank"><img class="card-img-top" src="{wikiImage}" /></a>
-        <div class='card-body pt-2 pb-1 px-2'>
-            <h2 class="text-primary text-uppercase mt-2"><a class='text-primary' href="{wikiURL}" target="_blank" style='text-decoration: none'>{wikiTitle}</a></h2>
-            <p class="card-text">{wikiExtract}</p>
-        </div>
-        <div class="card-footer pt-2 pb-2 px-2">
-             <a href="{wikiURL}" target="_blank"><button class="btn btn-secondary btn-lg text-center" style='width: 80%'>SEE MORE...</button></a>
-        </div>
-    </div>
-        """
-            return html
+            markdown = f"![{wikiTitle}]({wikiImage})\n\n## [{wikiTitle}]({wikiURL})\n{wikiExtract}\n**Source:** [{wikiTitle} Wikipedia page]({wikiURL})\n___"
+
+            return markdown
         else:
             # Handle the error or return a default value
             return f"🧑‍🦲 I'm so sorry! The Wikipedia entry on {query} is unavailable at the moment. Please try again later."
@@ -221,25 +213,11 @@ class GoogleImageSearchTool(BaseTool):
                 # Get a random sample of 6 items
                 random_items = random.sample(results, 6)
 
-                # Generate HTML for 5 random items
-                html_items = ''
+                # Save images to user session
                 for idx, item in enumerate(random_items):
-                    html_items += f'<a href="{item["image"]["contextLink"]}" target="_blank"><img class="img-thumbnail mb-2" src="{item["link"]}" alt="{item["title"]}" /></a>'
+                    cl.user_session.set(f"image{idx + 1}", item["link"])
 
-                html = f"""
-        <div class="card text-bg-light text-center">
-            <div class="card-header text-uppercase pt-3 pb-2 px-3">
-                <a href="https://www.google.com/search?q={encoded_query}&tbm=isch" target="_blank" style='text-decoration: none'><h2 class='text-primary'>{query} IMAGES</h2></a>
-            </div>
-            <div class="card-body pt-2 pb-2 px-2">
-                {html_items}
-            </div>
-            <div class="card-footer pt-2 pb-2 px-2">
-                <a href="https://www.google.com/search?q={encoded_query}&tbm=isch" target="_blank"><button class="btn btn-secondary btn-lg text-center" style='width: 80%'>SEE MORE...</button></a>
-            </div>
-        </div>
-                        """
-                return html
+                return "## Here are your images:"
 
             except JSONDecodeError:
                 return "🧑‍🦲 I'm so sorry! I can't find respond to that image search at the moment. Please try again later."
@@ -271,11 +249,9 @@ class GoogleSearchTool(BaseTool):
         if response.status_code == 200:
             try:
                 data = response.json()
-                # Parse the data and return the desired value
                 results = data['items']
 
-                # Iterate through the array and collect up to 5 items that don't contain more than 2 %20 in the snippet
-                html_items = ''
+                markdown_items = ''
                 count = 0
                 for item in results:
                     if item['snippet'].count('%20') <= 2:
@@ -284,36 +260,18 @@ class GoogleSearchTool(BaseTool):
                         else:
                             image_src = None
 
-                        html_items += f'<li class="list-group-item"><a class="text-primary" href="{item["link"]}" target="_blank" style="text-decoration: none"><h4 class="text-uppercase mt-2">{item["title"]}</h4></a><div class="googleSearchItemContent d-flex flex-row align-items-center">'
+                        markdown_items += f"### [{item['title']}]({item['link']})\n"
                         if image_src:
-                            html_items += f'<a class="me-3" href="{item["link"]}" target="_blank" style="width: 50%"><img class="img-thumbnail" src="{image_src}" alt="{item["title"]}" /></a>'
-                        html_items += f'<p class="card-text">{item["snippet"]}</p></div></li>'
+                            markdown_items += f"![{item['title']}]({image_src})\n"
+                        markdown_items += f"{item['snippet']}\n\n"
                         count += 1
 
                     if count == 5:
                         break
 
-                # Fill in remaining slots with default message or blank content if there are fewer than 5 items
-                while count < 5:
-                    html_items += '<div class="googleSearchItem"><div class="googleSearchItemTitle"><h2>No result found</h2></div><div class="googleSearchItemContent"><p></p></div></div>'
-                    count += 1
+                markdown_output = f"## {query} Search Results\n{markdown_items}\n___\nSee more results [here](https://www.google.com/search?q={encoded_query}&dateRestrict=m1&safe=active)"
 
-                html = f"""
-        <div class="card text-bg-light text-center">
-            <div class="card-header text-uppercase pt-3 pb-2 px-3">
-                <a href="https://www.google.com/search?q={encoded_query}&dateRestrict=m1&safe=active" target="_blank" style='text-decoration: none'><h2 class='text-primary'>{query} SEARCH RESULTS</h2></a>
-            </div>
-            <div class="card-body text-start pt-0 pb-0 px-0">
-                <ul class="list-group list-group-flush">
-                    {html_items}
-                </ul>
-            </div>
-            <div class="card-footer pt-2 pb-2 px-2">
-                <a href="https://www.google.com/search?q={encoded_query}&dateRestrict=m1&safe=active" target="_blank"><button class="btn btn-secondary btn-lg text-center" style="width: 80%">SEE MORE...</button></a>
-            </div>
-        </div>
-                        """
-                return html
+                return markdown_output
 
             except JSONDecodeError:
                 return "🧑‍🦲 I'm so sorry! I can't find respond to that search at the moment. Please try again later."
@@ -392,27 +350,23 @@ class TMDBSearchTool(BaseTool):
         images = []
         for item in known_for:
             title = item.get("title", item.get("name", "Unknown"))
-            img_tag = f'<img class="img-thumbnail" src="https://image.tmdb.org/t/p/w600_and_h900_bestv2/{item["poster_path"]}" alt="{title}" style="width: 30%"/>'
-            images.append(img_tag)
-        return "".join(images)
+            img_md = f"![{title}](https://image.tmdb.org/t/p/w600_and_h900_bestv2/{item['poster_path']})"
+            images.append(img_md)
+        return "\n\n".join(images)
 
     def _run(self, query: str) -> str:
         url = 'https://api.themoviedb.org/3/search/multi?'
         params = {
             'query': query,
             'api_key': os.environ.get("TMDB_API_KEY")
-            
         }
 
         response = requests.get(url, params=params)
 
-
         if response.status_code == 200:
             try:
                 data = response.json()
-                # Parse the data and return the desired value
                 results = data['results']
-                logging.info("Results: " + str(results))
 
                 if not results:
                     return "I'm so sorry! I can't find that at the moment. Please try again later 🧑‍🦲"
@@ -422,32 +376,17 @@ class TMDBSearchTool(BaseTool):
                 if first_item["media_type"] == "person":
                     id = first_item["id"]
                     name = first_item["name"]
+                    url_name = first_item["name"].replace(" ", "-")
                     image = first_item["profile_path"]
                     known_for = first_item["known_for"]
                     known_for_images = self.generate_known_for_images(known_for)
 
-                    html = f"""
-        <div class="card text-bg-light text-center">
-            <a href="https://www.themoviedb.org/person/{id}-{name}" target="_blank"><img class="card-img-top" src="https://image.tmdb.org/t/p/w600_and_h900_bestv2/{image}" alt="{name}" /></a>
-            <div class="card-body pt-2 pb-1 px-2 text-center">
-                <a href="https://www.themoviedb.org/person/{id}-{name}" target="_blank" style="text-decoration: none"><h2 class="text-primary text-uppercase">{name}</h2></a>
+                    markdown_output = f"## {name}\n![{name}](https://image.tmdb.org/t/p/w600_and_h900_bestv2/{image})\n___\n### Known for:\n{known_for_images}\n\nSee info more [here](https://www.themoviedb.org/person/{id}-{url_name})"
 
-                <div class="tmdbAnswerContentDetails">
-                    <h2>KNOWN FOR:</h2>
-                    <div class="tmdbAnswerContentDetailsKnownFor d-flex justify-content-between">
-                        {known_for_images}
-                    </div>
-                </div>
-            </div>
-            <div class="card-footer pt-2 pb-2 px-2">
-                <a href="https://www.themoviedb.org/movie/{id}-{name}" target="_blank"><button class="btn btn-secondary btn-lg text-center" style="width: 80%">SEE MORE...</button></a>
-            </div>
-        </div>
-                        """
-                        
                 elif first_item["media_type"] == "movie":
                     id = first_item["id"]
                     name = first_item["title"]
+                    url_name = first_item["title"].replace(" ", "-")
                     overview = first_item["overview"]
                     image = first_item["poster_path"]
                     release_date = first_item["release_date"]
@@ -456,64 +395,23 @@ class TMDBSearchTool(BaseTool):
                     rating = first_item["vote_average"]
                     formatted_rating = "{:.1f}".format(round(rating, 1))
 
-                    html = f"""
-        <div class="card text-bg-light text-center">
-            <a href="https://www.themoviedb.org/movie/{id}-{name}" target="_blank"><img class="card-img-top" src="https://image.tmdb.org/t/p/w600_and_h900_bestv2/{image}" alt="{name}" /></a>
-            <div class="card-body pt-2 pb-1 px-2 text-start">
-                <a href="https://www.themoviedb.org/movie/{id}-{name}" target="_blank" style="text-decoration: none"><h2 class="text-primary text-uppercase">{name}</h2></a>
-                <div class="movieSubtitle d-flex">
-                    <div class="movieReleaseDate me-5">
-                        <h6 class="card-subtitle text-muted">RELEASE DATE:</h6>
-                        <p class="card-subtitle text-muted">{formatted_date}</p>
-                    </div>
-                    <div class="movieRating">
-                        <h6 class="card-subtitle text-muted">TMDB RATING:</h6>
-                        <p class="card-subtitle text-muted">{formatted_rating}</p>
-                    </div>
-                </div>
-                <p class="card-text mt-1 mb-3">{overview}</p>
-            </div>
-            <div class="card-footer pt-2 pb-2 px-2">
-                <a href="https://www.themoviedb.org/movie/{id}-{name}" target="_blank"><button class="btn btn-secondary btn-lg text-center" style="width: 80%">SEE MORE...</button></a>
-            </div>
-        </div>
-                        """
+                    markdown_output = f"## {name}\n![{name}](https://image.tmdb.org/t/p/w600_and_h900_bestv2/{image})\n**RELEASE DATE**: {formatted_date}\n**TMDB RATING**: {formatted_rating}\n**Overview:** {overview}\n\nSee info more [here](https://www.themoviedb.org/movie/{id}-{url_name})"
 
                 elif first_item["media_type"] == "tv":
                     id = first_item["id"]
                     name = first_item["name"]
+                    url_name = first_item["name"].replace(" ", "-")
                     overview = first_item["overview"]
                     image = first_item["poster_path"]
                     release_date = first_item["first_air_date"]
                     date_obj = datetime.strptime(release_date, "%Y-%m-%d")
                     formatted_date = date_obj.strftime("%-dth %B %Y")
-                    rating = results[0]["vote_average"]
+                    rating = first_item["vote_average"]
                     formatted_rating = "{:.1f}".format(round(rating, 1))
 
-                    html = f"""
-        <div class="card text-bg-light text-center">
-            <a href="https://www.themoviedb.org/tv/{id}-{name}" target="_blank"><img class="card-img-top" src="https://image.tmdb.org/t/p/w600_and_h900_bestv2/{image}" alt="{name}" /></a>
-            <div class="card-body pt-2 pb-1 px-2 text-start">
-                <a href="https://www.themoviedb.org/tv/{id}-{name}" target="_blank" style="text-decoration: none"><h2 class="text-primary text-uppercase">{name}</h2></a>
-                <div class="movieSubtitle d-flex">
-                    <div class="movieReleaseDate me-5">
-                        <h6 class="card-subtitle text-muted">RELEASE DATE:</h6>
-                        <p class="card-subtitle text-muted">{formatted_date}</p>
-                    </div>
-                    <div class="movieRating">
-                        <h6 class="card-subtitle text-muted">TMDB RATING:</h6>
-                        <p class="card-subtitle text-muted">{formatted_rating}</p>
-                    </div>
-                </div>
-                <p class="card-text mt-1 mb-3">{overview}</p>
-            </div>
-            <div class="card-footer pt-2 pb-2 px-2">
-                <a href="https://www.themoviedb.org/tv/{id}-{name}" target="_blank"><button class="btn btn-secondary btn-lg text-center" style="width: 80%">SEE MORE...</button></a>
-            </div>
-        </div>
-                        """
-                
-                return html
+                    markdown_output = f"## {name}\n![{name}](https://image.tmdb.org/t/p/w600_and_h900_bestv2/{image})\n**RELEASE DATE**: {formatted_date}\n**TMDB RATING**: {formatted_rating}\n**Overview:** {overview}\n\nSee info more [here](https://www.themoviedb.org/tv/{id}-{url_name})"
+
+                return markdown_output
 
             except JSONDecodeError:
                 return "I'm so sorry! I can't find that at the moment. Please try again later 🧑‍🦲"

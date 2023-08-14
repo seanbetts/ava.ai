@@ -20,11 +20,12 @@ async def handle_text_file(uploaded_file, model):
     ]
 
     actions = [
-        cl.Action(name="Summarise", value=f"{text}", description="Summarise!"),
-        cl.Action(name="Bulletpoint Summary", value=f"{text}", description="Bulletpoint Summary!"),
-        cl.Action(name="Create Wordcloud", value=f"{text}", description="Create Wordcloud!"),
-        cl.Action(name="Copy", value=f"{text}", description="Copy Text!"),
-        cl.Action(name="Save To Knowledgebase", value=f"{text}", description="Save To Knowledgebase!"),
+        cl.Action(name="Summarise", value=f"{text}", description="This will write a one paragraph summary for you"),
+        cl.Action(name="Bulletpoint Summary", value=f"{text}", description="This will write a bullepoint summary for you"),
+        cl.Action(name="Create Wordcloud", value=f"{text}", description="This will create a wordcloud for you"),
+        cl.Action(name="Get Quotes", value=f"{text}", description="This will extract any quotes from the document"),
+        cl.Action(name="Copy", value=f"{text}", description="This will copy the text to your clipboard"),
+        cl.Action(name="Save To Knowledgebase", value=f"{text}", description="Save this to your personal knowledgebase"),
     ]
 
     tokens = num_tokens_from_string(text, model)
@@ -50,11 +51,12 @@ async def handle_doc_file(uploaded_file, model):
     ]
 
     actions = [
-        cl.Action(name="Summarise", value=f"{doc_text}", description="Summarise!"),
-        cl.Action(name="Bulletpoint Summary", value=f"{doc_text}", description="Bulletpoint Summary!"),
-        cl.Action(name="Create Wordcloud", value=f"{doc_text}", description="Create Wordcloud!"),
-        cl.Action(name="Copy", value=f"{doc_text}", description="Copy Text!"),
-        cl.Action(name="Save To Knowledgebase", value=f"{doc_text}", description="Save To Knowledgebase!"),
+        cl.Action(name="Summarise", value=f"{doc_text}", description="This will write a one paragraph summary for you"),
+        cl.Action(name="Bulletpoint Summary", value=f"{doc_text}", description="This will write a bullepoint summary for you"),
+        cl.Action(name="Create Wordcloud", value=f"{doc_text}", description="This will create a wordcloud for you"),
+        cl.Action(name="Get Quotes", value=f"{doc_text}", description="This will extract any quotes from the document"),
+        cl.Action(name="Copy", value=f"{doc_text}", description="This will copy the text to your clipboard"),
+        cl.Action(name="Save To Knowledgebase", value=f"{doc_text}", description="Save this to your personal knowledgebase"),
     ]
     
     tokens = num_tokens_from_string(doc_text, model)
@@ -84,12 +86,13 @@ async def handle_pdf_file(uploaded_file, model):
     ]
 
     actions = [
-        cl.Action(name="Summarise", value=f"{pdf_text}", description="Summarise!"),
-        cl.Action(name="Bulletpoint Summary", value=f"{pdf_text}", description="Bulletpoint Summary!"),
-        cl.Action(name="Create Wordcloud", value=f"{pdf_text}", description="Create Wordcloud!"),
-        cl.Action(name="Copy", value=f"{pdf_text}", description="Copy Text!"),
-        cl.Action(name="Save To Knowledgebase", value=f"{pdf_text}", description="Save To Knowledgebase!"),
-        cl.Action(name="Upload File", value="temp", description="Upload File!"),
+        cl.Action(name="Summarise", value=f"{pdf_text}", description="This will write a one paragraph summary for you"),
+        cl.Action(name="Bulletpoint Summary", value=f"{pdf_text}", description="This will write a bullepoint summary for you"),
+        cl.Action(name="Create Wordcloud", value=f"{pdf_text}", description="This will create a wordcloud for you"),
+        cl.Action(name="Get Quotes", value=f"{pdf_text}", description="This will extract any quotes from the document"),
+        cl.Action(name="Copy", value=f"{pdf_text}", description="This will copy the text to your clipboard"),
+        cl.Action(name="Save To Knowledgebase", value=f"{pdf_text}", description="Save this to your personal knowledgebase"),
+        cl.Action(name="Upload File", value="temp", description="Upload any file you'd like help with"),
     ]
 
     tokens = num_tokens_from_string(pdf_text, model)
@@ -117,12 +120,13 @@ async def handle_ppt_file(uploaded_file, model):
     ]
 
     actions = [
-        cl.Action(name="Summarise", value=f"{ppt_text}", description="Summarise!"),
-        cl.Action(name="Bulletpoint Summary", value=f"{ppt_text}", description="Bulletpoint Summary!"),
-        cl.Action(name="Create Wordcloud", value=f"{ppt_text}", description="Create Wordcloud!"),
-        cl.Action(name="Copy", value=f"{ppt_text}", description="Copy Text!"),
-        cl.Action(name="Save To Knowledgebase", value=f"{ppt_text}", description="Save To Knowledgebase!"),
-        cl.Action(name="Upload File", value="temp", description="Upload File!"),
+        cl.Action(name="Summarise", value=f"{ppt_text}", description="This will write a one paragraph summary for you"),
+        cl.Action(name="Bulletpoint Summary", value=f"{ppt_text}", description="This will write a bullepoint summary for you"),
+        cl.Action(name="Create Wordcloud", value=f"{ppt_text}", description="This will create a wordcloud for you"),
+        cl.Action(name="Get Quotes", value=f"{ppt_text}", description="This will extract any quotes from the document"),
+        cl.Action(name="Copy", value=f"{ppt_text}", description="This will copy the text to your clipboard"),
+        cl.Action(name="Save To Knowledgebase", value=f"{ppt_text}", description="Save this to your personal knowledgebase"),
+        cl.Action(name="Upload File", value="temp", description="Upload any file you'd like help with"),
     ]
 
     tokens = num_tokens_from_string(ppt_text, model)
@@ -149,8 +153,8 @@ async def handle_xlsx_file(uploaded_file):
     ]
 
     actions = [
-        cl.Action(name="Get Insights", value="data", description="Get Insights!"),
-        cl.Action(name="Upload File", value="temp", description="Upload File!"),
+        cl.Action(name="Get Insights", value="data", description="This will get you insights on your data"),
+        cl.Action(name="Upload File", value="temp", description="Upload any file you'd like help with"),
     ]
 
     await cl.Message(
@@ -173,8 +177,8 @@ async def handle_csv_file(uploaded_file):
     ]
 
     actions = [
-        cl.Action(name="Get Insights", value="data", description="Get Insights!"),
-        cl.Action(name="Upload File", value="temp", description="Upload File!"),
+        cl.Action(name="Get Insights", value="data", description="This will get you insights on your data"),
+        cl.Action(name="Upload File", value="temp", description="Upload any file you'd like help with"),
     ]
 
     await cl.Message(
