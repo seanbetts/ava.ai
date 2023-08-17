@@ -5,7 +5,7 @@ import chainlit as cl
 from llama_index import TrafilaturaWebReader
 
 from modules.chatbot import handle_file_upload
-from .utils import extract_first_200_words, num_tokens_from_string, get_token_limit, is_over_token_limit, dataframe_to_json_metadata
+from .utils import (extract_first_200_words, num_tokens_from_string, get_token_limit, is_over_token_limit, dataframe_to_json_metadata, generate_actions)
 
 import io
 from wordcloud import WordCloud, STOPWORDS
@@ -16,7 +16,7 @@ import PyPDF2
 from io import BytesIO
 
 ###--CREATE WORDCLOUD--###
-@cl.action_callback("Create Wordcloud")
+@cl.action_callback("Wordcloud")
 async def on_action(action):
     # Send message to user
     msg = cl.Message(content="Generating Wordcloud...")
@@ -47,10 +47,8 @@ async def on_action(action):
         cl.File(name="Wordcloud.png", content=image_bytes, display="inline")
     ]
 
-    actions = [
-        cl.Action(name="Save To Knowledgebase", value=f"{image_bytes}", description="Save this to your personal knowledgebase"),
-        cl.Action(name="Upload File", value="temp", description="Upload any file you'd like help with"),
-    ]
+    action_keys = ["save_to_knowledgebase", "upload_file"]
+    actions = generate_actions(image_bytes, action_keys)
 
     # Remove previous message
     await msg.remove()
@@ -93,15 +91,8 @@ async def on_action(action):
             cl.Text(name="Here are the first 200 words from the document:", content=extracted_text, display="inline")
         ]
 
-        actions = [
-            cl.Action(name="Summarise", value=f"{pdf_text}", description="This will write a one paragraph summary for you"),
-            cl.Action(name="Bulletpoint Summary", value=f"{pdf_text}", description="This will write a bullepoint summary for you"),
-            cl.Action(name="Create Wordcloud", value=f"{pdf_text}", description="This will create a wordcloud for you"),
-            cl.Action(name="Get Quotes", value=f"{pdf_text}", description="This will extract any quotes from the document"),
-            cl.Action(name="Copy", value=f"{pdf_text}", description="This will copy the text to your clipboard"),
-            cl.Action(name="Save To Knowledgebase", value=f"{pdf_text}", description="Save this to your personal knowledgebase"),
-            cl.Action(name="Upload File", value="temp", description="Upload any file you'd like help with"),
-        ]
+        action_keys = ["summarise", "bulletpoint_summary", "create_wordcloud", "get_quotes", "copy", "save_to_knowledgebase", "upload_file"]
+        actions = generate_actions(pdf_text, action_keys)
 
         model = cl.user_session.get("action_model")
         tokens = num_tokens_from_string(pdf_text, model)
@@ -128,15 +119,8 @@ async def on_action(action):
             cl.Text(name="Here are the first 200 words from the webpage:", content=extracted_text, display="inline")
         ]
 
-        actions = [
-            cl.Action(name="Summarise", value=f"{documents[0].text}", description="This will write a one paragraph summary for you"),
-            cl.Action(name="Bulletpoint Summary", value=f"{documents[0].text}", description="This will write a bullepoint summary for you"),
-            cl.Action(name="Create Wordcloud", value=f"{documents[0].text}", description="This will create a wordcloud for you"),
-            cl.Action(name="Get Quotes", value=f"{documents[0].text}", description="This will extract any quotes from the document"),
-            cl.Action(name="Copy", value=f"{documents[0].text}", description="This will copy the text to your clipboard"),
-            cl.Action(name="Save To Knowledgebase", value=f"{documents[0].text}", description="Save this to your personal knowledgebase"),
-            cl.Action(name="Upload File", value="temp", description="Upload any file you'd like help with"),
-        ]
+        action_keys = ["summarise", "bulletpoint_summary", "create_wordcloud", "get_quotes", "copy", "save_to_knowledgebase", "upload_file"]
+        actions = generate_actions(documents[0].text, action_keys)
 
         # Remove previous message
         await msg.remove()
@@ -152,11 +136,10 @@ async def on_action(action):
 async def on_action(action):
     pyperclip.copy(action.value)
 
-    actions = [
-        cl.Action(name="Upload File", value="temp", description="Upload any file you'd like help with"),
-    ]
+    action_keys = ["upload_file"]
+    actions = generate_actions("data", action_keys)
 
-    await cl.Message(content=f"**Text copied to clipboard**", actions=actions).send()
+    await cl.Message(content=f"**Text copied to clipboard**\n___", actions=actions).send()
 
     # Optionally remove the action button from the chatbot user interface
     # await action.remove()
@@ -191,14 +174,11 @@ async def on_action(action):
 
     else:
         # Call the chain asynchronously
-        res = await llm_chain.acall(f"Write me a summary of this text:\n{action.value}", callbacks=[cb])
+        res = await llm_chain.acall(f"Write me a one paragraph summary of this text, leaving out no details:\n{action.value}", callbacks=[cb])
         answer = res["text"]
 
-        actions = [
-            cl.Action(name="Copy", value=answer, description="This will copy the text to your clipboard"),
-            cl.Action(name="Save To Knowledgebase", value=answer, description="Save this to your personal knowledgebase"),
-            cl.Action(name="Upload File", value="temp", description="Upload any file you'd like help with"),
-        ]
+        action_keys = ["copy", "save_to_knowledgebase", "upload_file"]
+        actions = generate_actions(answer, action_keys)
 
         await cl.Message(content=f"**Here is your summary:**\n\n{answer}\n___", actions=actions).send()
 
@@ -206,7 +186,7 @@ async def on_action(action):
     # await action.remove()
 
 ###--WRITE BULLETPOINT SUMMARY--###
-@cl.action_callback("Bulletpoint Summary")
+@cl.action_callback("Bulletpoints")
 async def on_action(action):
 
     # Retrieve the chain from the user session
@@ -229,11 +209,8 @@ async def on_action(action):
         res = await llm_chain.acall(f"Write me a bulletpoint summary of this text:\n{action.value}", callbacks=[cb])
         answer = res["text"]
 
-        actions = [
-            cl.Action(name="Copy", value=answer, description="This will copy the text to your clipboard"),
-            cl.Action(name="Save To Knowledgebase", value=answer, description="Save this to your personal knowledgebase"),
-            cl.Action(name="Upload File", value="temp", description="Upload any file you'd like help with"),
-        ]
+        action_keys = ["copy", "save_to_knowledgebase", "upload_file"]
+        actions = generate_actions(answer, action_keys)
 
         await cl.Message(content=f"**Here is your bulletpoint summary:**\n\n{answer}\n___", actions=actions).send()
 
@@ -246,7 +223,10 @@ async def on_action(action):
 
     ## Add LLM query etc. here ##
 
-    await cl.Message("**Knowledge Saved!**").send()
+    action_keys = ["upload_file"]
+    actions = generate_actions("data", action_keys)
+
+    await cl.Message("**Knowledge Saved!**\n___", actions=actions).send()
 
     # Optionally remove the action button from the chatbot user interface
     # await action.remove()
@@ -310,11 +290,8 @@ async def on_action(action):
         response = await llm_chain.acall(prompt, callbacks=[cb])
         answer = response["text"]
 
-        actions = [
-            cl.Action(name="Copy", value=answer, description="This will copy the text to your clipboard"),
-            cl.Action(name="Save To Knowledgebase", value=answer, description="Save this to your personal knowledgebase"),
-            cl.Action(name="Upload File", value="temp", description="Upload any file you'd like help with"),
-        ]
+        action_keys = ["copy", "save_to_knowledgebase", "upload_file"]
+        actions = generate_actions(answer, action_keys)
 
         await cl.Message(content=f"{answer}\n___", actions=actions).send()
 
@@ -322,7 +299,7 @@ async def on_action(action):
         # await action.remove()
 
 ###--GET QUOTES--###
-@cl.action_callback("Get Quotes")
+@cl.action_callback("Quotes")
 async def on_action(action):
 
     # Retrieve the chain from the user session
@@ -345,17 +322,46 @@ async def on_action(action):
         res = await llm_chain.acall(f"Create a bulletpoint list of any quotes that are in this text. If there aren't any quotes then just respond with 'There are no quotes in this text':\n{action.value}", callbacks=[cb])
         answer = res["text"]
 
-        actions = [
-            cl.Action(name="Copy", value=answer, description="This will copy the text to your clipboard"),
-            cl.Action(name="Save To Knowledgebase", value=answer, description="Save this to your personal knowledgebase"),
-            cl.Action(name="Upload File", value="temp", description="Upload any file you'd like help with"),
-        ]
+        action_keys = ["copy", "save_to_knowledgebase", "upload_file"]
+        actions = generate_actions(answer, action_keys)
 
         if "There are no quotes in this text" in answer:
             await cl.Message(content=f"{answer}\n___", actions=actions).send()
 
         else:
             await cl.Message(content=f"## Here are your quotes:\n\n{answer}\n___", actions=actions).send()
+
+    # Optionally remove the action button from the chatbot user interface
+    # await action.remove()
+
+###--GET THEMES--###
+@cl.action_callback("Themes")
+async def on_action(action):
+
+    # Retrieve the chain from the user session
+    llm_chain = cl.user_session.get("llm_chain")
+    cb = cl.AsyncLangchainCallbackHandler(
+        stream_final_answer=True, answer_prefix_tokens=["FINAL", "ANSWER"]
+    )
+    cb.answer_reached = True
+
+    model = cl.user_session.get("action_model")
+    tokens = num_tokens_from_string(action.value, model)
+    token_limit = get_token_limit(model)
+
+    # Check if prompt is over token limit
+    if tokens > token_limit:
+        await cl.Message(content=f"The data is c.{format(tokens, ',')} tokens, which is {format(tokens - token_limit, ',')} too many tokens for {model}. Please select a model that allows more tokens and try again.").send()
+
+    else:
+        # Call the chain asynchronously
+        res = await llm_chain.acall(f"Create a bulletpoint list of the main themes that are in this text:\n{action.value}", callbacks=[cb])
+        answer = res["text"]
+
+        action_keys = ["copy", "save_to_knowledgebase", "upload_file"]
+        actions = generate_actions(answer, action_keys)
+
+        await cl.Message(content=f"## Here are the themes:\n\n{answer}\n___", actions=actions).send()
 
     # Optionally remove the action button from the chatbot user interface
     # await action.remove()

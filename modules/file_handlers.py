@@ -7,138 +7,46 @@ import PyPDF2
 from pptx import Presentation
 from docx import Document
 import pandas as pd
+import json
 
-from .utils import extract_first_200_words, num_tokens_from_string, get_token_limit, is_over_token_limit, dataframe_to_json_metadata
+from .utils import (extract_first_200_words, generate_actions, send_file_message, num_tokens_from_string, get_token_limit, is_over_token_limit, dataframe_to_json_metadata)
 
-###--HANDLE PLAIN TEXT FILES--###
+##--HANDLE TEXT--##
 async def handle_text_file(uploaded_file, model):
     text = uploaded_file.content.decode("utf-8")
     extracted_text = extract_first_200_words(text)
+    action_keys = ["summarise", "bulletpoint_summary", "create_wordcloud", "get_themes", "get_quotes", "copy", "save_to_knowledgebase"]
+    await send_file_message(uploaded_file.name, text, extracted_text, model, action_keys)
 
-    elements = [
-        cl.Text(name="Here are the first 200 words from the document:", content=extracted_text, display="inline")
-    ]
-
-    actions = [
-        cl.Action(name="Summarise", value=f"{text}", description="This will write a one paragraph summary for you"),
-        cl.Action(name="Bulletpoint Summary", value=f"{text}", description="This will write a bullepoint summary for you"),
-        cl.Action(name="Create Wordcloud", value=f"{text}", description="This will create a wordcloud for you"),
-        cl.Action(name="Get Quotes", value=f"{text}", description="This will extract any quotes from the document"),
-        cl.Action(name="Copy", value=f"{text}", description="This will copy the text to your clipboard"),
-        cl.Action(name="Save To Knowledgebase", value=f"{text}", description="Save this to your personal knowledgebase"),
-    ]
-
-    tokens = num_tokens_from_string(text, model)
-    token_limit = get_token_limit(model)
-    is_over = is_over_token_limit(tokens, token_limit)
-
-    await cl.Message(
-        content=f"`{uploaded_file.name}` uploaded, it contains {format(len(text), ',')} characters which is c.{format(tokens, ',')} tokens.\nYou're currently using the {model} model which has a token limit of {format(token_limit, ',')}.\n{is_over[1]}", elements=elements, actions=actions
-    ).send()
-
-###--HANDLE DOCs--###
+##--HANDLE DOCS--##
 async def handle_doc_file(uploaded_file, model):
     doc_content = io.BytesIO(uploaded_file.content)
     doc = Document(doc_content)
-    extracted_text = []
-    for para in doc.paragraphs:
-        extracted_text.append(para.text)
-    doc_text = "\n".join(extracted_text)
+    doc_text = "\n".join([para.text for para in doc.paragraphs])
     extracted_text = extract_first_200_words(doc_text)
+    action_keys = ["summarise", "bulletpoint_summary", "create_wordcloud", "get_themes", "get_quotes", "copy", "save_to_knowledgebase"]
+    await send_file_message(uploaded_file.name, doc_text, extracted_text, model, action_keys)
 
-    elements = [
-        cl.Text(name="Here are the first 200 words from the document:", content=extracted_text, display="inline")
-    ]
-
-    actions = [
-        cl.Action(name="Summarise", value=f"{doc_text}", description="This will write a one paragraph summary for you"),
-        cl.Action(name="Bulletpoint Summary", value=f"{doc_text}", description="This will write a bullepoint summary for you"),
-        cl.Action(name="Create Wordcloud", value=f"{doc_text}", description="This will create a wordcloud for you"),
-        cl.Action(name="Get Quotes", value=f"{doc_text}", description="This will extract any quotes from the document"),
-        cl.Action(name="Copy", value=f"{doc_text}", description="This will copy the text to your clipboard"),
-        cl.Action(name="Save To Knowledgebase", value=f"{doc_text}", description="Save this to your personal knowledgebase"),
-    ]
-    
-    tokens = num_tokens_from_string(doc_text, model)
-    token_limit = get_token_limit(model)
-    is_over = is_over_token_limit(tokens, token_limit)
-
-    await cl.Message(
-        content=f"`{uploaded_file.name}` uploaded, it contains {format(len(doc_text), ',')} characters which is c.{format(tokens, ',')} tokens.\nYou're currently using the {model} model which has a token limit of {format(token_limit, ',')}.\n{is_over[1]}", elements=elements, actions=actions
-    ).send()
-
-###--HANDLE PDFs--###
+##--HANDLE PDFS--##
 async def handle_pdf_file(uploaded_file, model):
-    # Load the PDF using PyPDF2
     pdf_content = io.BytesIO(uploaded_file.content)
     pdf_reader = PyPDF2.PdfReader(pdf_content)
-
-    text = []
-    for page_num in range(len(pdf_reader.pages)):
-        page = pdf_reader.pages[page_num]
-        text.append(page.extract_text())
-    pdf_text = "\n".join(text)
+    pdf_text = "\n".join([page.extract_text() for page in pdf_reader.pages])
     extracted_text = extract_first_200_words(pdf_text)
+    action_keys = ["summarise", "bulletpoint_summary", "create_wordcloud", "get_themes", "get_quotes", "copy", "save_to_knowledgebase", "upload_file"]
+    await send_file_message(uploaded_file.name, pdf_text, extracted_text, model, action_keys)
 
-    elements = [
-        # cl.Pdf(name="PDF", display="inline", content=uploaded_file.content),
-        cl.Text(name="Here are the first 200 words from the document:", content=extracted_text, display="inline")
-    ]
-
-    actions = [
-        cl.Action(name="Summarise", value=f"{pdf_text}", description="This will write a one paragraph summary for you"),
-        cl.Action(name="Bulletpoint Summary", value=f"{pdf_text}", description="This will write a bullepoint summary for you"),
-        cl.Action(name="Create Wordcloud", value=f"{pdf_text}", description="This will create a wordcloud for you"),
-        cl.Action(name="Get Quotes", value=f"{pdf_text}", description="This will extract any quotes from the document"),
-        cl.Action(name="Copy", value=f"{pdf_text}", description="This will copy the text to your clipboard"),
-        cl.Action(name="Save To Knowledgebase", value=f"{pdf_text}", description="Save this to your personal knowledgebase"),
-        cl.Action(name="Upload File", value="temp", description="Upload any file you'd like help with"),
-    ]
-
-    tokens = num_tokens_from_string(pdf_text, model)
-    token_limit = get_token_limit(model)
-    is_over = is_over_token_limit(tokens, token_limit)
-
-    await cl.Message(
-        content=f"`{uploaded_file.name}` uploaded, it contains {format(len(pdf_text), ',')} characters which is c.{format(tokens, ',')} tokens.\nYou're currently using the {model} model which has a token limit of {format(token_limit, ',')}.\n{is_over[1]}", elements=elements, actions=actions
-    ).send()
-
-###--HANDLE PPTs--###
+##--HANDLE PPTS--##
 async def handle_ppt_file(uploaded_file, model):
     ppt_content = io.BytesIO(uploaded_file.content)
     presentation = Presentation(ppt_content)
-    extracted_text = []
-    for slide in presentation.slides:
-        for shape in slide.shapes:
-            if hasattr(shape, "text"):
-                extracted_text.append(shape.text)
-    ppt_text = "\n".join(extracted_text)
+    ppt_text = "\n".join([shape.text for slide in presentation.slides for shape in slide.shapes if hasattr(shape, "text")])
     extracted_text = extract_first_200_words(ppt_text)
-
-    elements = [
-        cl.Text(name="Here are the first 200 words from the document:", content=extracted_text, display="inline")
-    ]
-
-    actions = [
-        cl.Action(name="Summarise", value=f"{ppt_text}", description="This will write a one paragraph summary for you"),
-        cl.Action(name="Bulletpoint Summary", value=f"{ppt_text}", description="This will write a bullepoint summary for you"),
-        cl.Action(name="Create Wordcloud", value=f"{ppt_text}", description="This will create a wordcloud for you"),
-        cl.Action(name="Get Quotes", value=f"{ppt_text}", description="This will extract any quotes from the document"),
-        cl.Action(name="Copy", value=f"{ppt_text}", description="This will copy the text to your clipboard"),
-        cl.Action(name="Save To Knowledgebase", value=f"{ppt_text}", description="Save this to your personal knowledgebase"),
-        cl.Action(name="Upload File", value="temp", description="Upload any file you'd like help with"),
-    ]
-
-    tokens = num_tokens_from_string(ppt_text, model)
-    token_limit = get_token_limit(model)
-    is_over = is_over_token_limit(tokens, token_limit)
-
-    await cl.Message(
-        content=f"`{uploaded_file.name}` uploaded, it contains {format(len(ppt_text), ',')} characters which is c.{format(tokens, ',')} tokens.\nYou're currently using the {model} model which has a token limit of {format(token_limit, ',')}.\n{is_over[1]}", elements=elements, actions=actions
-    ).send()
+    action_keys = ["summarise", "bulletpoint_summary", "create_wordcloud", "get_themes", "get_quotes", "copy", "save_to_knowledgebase", "upload_file"]
+    await send_file_message(uploaded_file.name, ppt_text, extracted_text, model, action_keys)
 
 ###--HANDLE XLSXs--###
-async def handle_xlsx_file(uploaded_file):
+async def handle_xlsx_file(uploaded_file, model):
     data = io.BytesIO(uploaded_file.content)
     df = pd.read_excel(data)
 
@@ -148,21 +56,26 @@ async def handle_xlsx_file(uploaded_file):
     # Store the dataframe in the user session
     cl.user_session.set("df", df)
 
+    text_file=dataframe_to_json_metadata(df)
+    text_file_string = json.dumps(text_file)
+
+    tokens = num_tokens_from_string(text_file_string, model)
+    token_limit = get_token_limit(model)
+    is_over = is_over_token_limit(tokens, token_limit)
+
     elements = [
         cl.Text(name="Here are the top 5 rows of data:", content=markdown_content, display="inline")
     ]
 
-    actions = [
-        cl.Action(name="Get Insights", value="data", description="This will get you insights on your data"),
-        cl.Action(name="Upload File", value="temp", description="Upload any file you'd like help with"),
-    ]
+    action_keys = ["get_insights", "upload_file"]
+    actions = generate_actions("data", action_keys)
 
     await cl.Message(
-        content=f"`{uploaded_file.name}` uploaded. It has {format(df.shape[0], ',')} rows and {format(df.shape[1], ',')} columns.", elements=elements, actions=actions
+        content=f"`{uploaded_file.name}` uploaded.\n It has {format(df.shape[0], ',')} rows and {format(df.shape[1], ',')} columns which is c.{format(tokens, ',')} tokens.\nYou're currently using the {model} model which has a token limit of {format(token_limit, ',')}.\n{is_over[1]}", elements=elements, actions=actions
     ).send()
 
 ###--HANDLE CSVs--###
-async def handle_csv_file(uploaded_file):
+async def handle_csv_file(uploaded_file, model):
     data = io.BytesIO(uploaded_file.content)
     df = pd.read_csv(data)
 
@@ -172,17 +85,22 @@ async def handle_csv_file(uploaded_file):
     # Store the dataframe in the user session
     cl.user_session.set("df", df)
 
+    text_file=dataframe_to_json_metadata(df)
+    text_file_string = json.dumps(text_file)
+
+    tokens = num_tokens_from_string(text_file_string, model)
+    token_limit = get_token_limit(model)
+    is_over = is_over_token_limit(tokens, token_limit)
+
     elements = [
         cl.Text(name="Here are the top 5 rows of data:", content=markdown_content, display="inline")
     ]
 
-    actions = [
-        cl.Action(name="Get Insights", value="data", description="This will get you insights on your data"),
-        cl.Action(name="Upload File", value="temp", description="Upload any file you'd like help with"),
-    ]
+    action_keys = ["get_insights", "upload_file"]
+    actions = generate_actions("data", action_keys)
 
     await cl.Message(
-        content=f"`{uploaded_file.name}` uploaded. It has {format(df.shape[0], ',')} rows and {format(df.shape[1], ',')} columns.", elements=elements, actions=actions
+        content=f"`{uploaded_file.name}` uploaded.\n It has {format(df.shape[0], ',')} rows and {format(df.shape[1], ',')} columns which is c.{format(tokens, ',')} tokens.\nYou're currently using the {model} model which has a token limit of {format(token_limit, ',')}.\n{is_over[1]}", elements=elements, actions=actions
     ).send()
 
 ###--HANDLE IMAGEs--###

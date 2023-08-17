@@ -1,5 +1,6 @@
 # modules/utils.py
 
+import chainlit as cl
 import tiktoken
 import pandas as pd
 
@@ -64,3 +65,38 @@ def dataframe_to_json_metadata(df):
         'data': data_json,
         'metadata': metadata
     }
+
+## Returns the actions required
+def generate_actions(text, action_keys=[]):
+    # Define a dictionary with all possible actions and their attributes
+    action_templates = {
+        "summarise": {"name": "Summarise", "description": "This will write a one paragraph summary for you"},
+        "bulletpoint_summary": {"name": "Bulletpoints", "description": "This will write a bullepoint summary for you"},
+        "create_wordcloud": {"name": "Wordcloud", "description": "This will create a wordcloud for you"},
+        "get_themes": {"name": "Themes", "description": "This will summarise the themes in the document"},
+        "get_quotes": {"name": "Quotes", "description": "This will extract any quotes from the document"},
+        "get_insights": {"name": "Get Insights", "description": "This will get you insights on your data"},
+        "copy": {"name": "Copy", "description": "This will copy the text to your clipboard"},
+        "save_to_knowledgebase": {"name": "Save To Knowledgebase", "description": "Save this to your personal knowledgebase"},
+        "upload_file": {"name": "Upload File", "description": "Upload any file you'd like help with"}
+    }
+
+    actions = []
+    for key in action_keys:
+        if key in action_templates:
+            template = action_templates[key]
+            actions.append(cl.Action(name=template["name"], value=f"{text}", description=template["description"]))
+
+    return actions
+
+## Sends summary including number of tokens
+async def send_file_message(uploaded_file, text_content, extracted_text, model, actions):
+    tokens = num_tokens_from_string(text_content, model)
+    token_limit = get_token_limit(model)
+    is_over = is_over_token_limit(tokens, token_limit)
+    
+    await cl.Message(
+        content=f"`{uploaded_file}` uploaded.\nIt contains {format(len(text_content), ',')} characters which is c.{format(tokens, ',')} tokens.\nYou're currently using the {model} model which has a token limit of {format(token_limit, ',')}.\n{is_over[1]}", 
+        elements=[cl.Text(name="Here are the first 200 words from the document:", content=extracted_text, display="inline")], 
+        actions=generate_actions(text_content, actions)
+    ).send()

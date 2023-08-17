@@ -27,11 +27,11 @@ async def handle_file_upload(model):
 
     # Handling an Excel file
     elif uploaded_file.type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
-        await handle_xlsx_file(uploaded_file)
+        await handle_xlsx_file(uploaded_file, model)
 
     # Handling a CSV file
     elif uploaded_file.type == "text/csv":
-       await  handle_csv_file(uploaded_file)
+       await  handle_csv_file(uploaded_file, model)
 
     # Handling an Image file
     elif uploaded_file.type in ["image/jpeg", "image/gif", "image/png", "image/webp"]:
@@ -46,7 +46,7 @@ async def handle_url_message(message):
     # Let the user know that your detected a url
     # Sending an action button within a chatbot message
     actions = [
-        cl.Action(name="Get Website Content", value=f"{message}", description="Get Content!")
+        cl.Action(name="Get Website Content", value=f"{message}", description="This will get you all the text content from the website")
     ]
 
-    await cl.Message(content=f"You gave me a URL to search : {message}", actions=actions).send()
+    await cl.Message(content=f"You gave me this URL to search : {message}", actions=actions).send()
