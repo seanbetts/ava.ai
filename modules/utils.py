@@ -70,6 +70,8 @@ def dataframe_to_json_metadata(df):
 def generate_actions(text, action_keys=[]):
     # Define a dictionary with all possible actions and their attributes
     action_templates = {
+        "question": {"name": "Question", "description": "Ask a question about this content"},
+        "another_question": {"name": "Another Question", "description": "Ask another question about this content"},
         "summarise": {"name": "Summarise", "description": "This will write a one paragraph summary for you"},
         "bulletpoint_summary": {"name": "Bulletpoints", "description": "This will write a bullepoint summary for you"},
         "create_wordcloud": {"name": "Wordcloud", "description": "This will create a wordcloud for you"},
@@ -77,7 +79,7 @@ def generate_actions(text, action_keys=[]):
         "get_quotes": {"name": "Quotes", "description": "This will extract any quotes from the document"},
         "get_insights": {"name": "Get Insights", "description": "This will get you insights on your data"},
         "copy": {"name": "Copy", "description": "This will copy the text to your clipboard"},
-        "save_to_knowledgebase": {"name": "Save To Knowledgebase", "description": "Save this to your personal knowledgebase"},
+        "save_to_knowledgebase": {"name": "Save", "description": "Save this to your personal knowledgebase"},
         "upload_file": {"name": "Upload File", "description": "Upload any file you'd like help with"}
     }
 

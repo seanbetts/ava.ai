@@ -44,7 +44,6 @@ async def on_action(action):
     # Sending an image with the file name
     elements = [
         cl.Image(name="Wordcloud", display="inline", size="large", content=image_bytes),
-        cl.File(name="Wordcloud.png", content=image_bytes, display="inline")
     ]
 
     action_keys = ["save_to_knowledgebase", "upload_file"]
@@ -91,7 +90,7 @@ async def on_action(action):
             cl.Text(name="Here are the first 200 words from the document:", content=extracted_text, display="inline")
         ]
 
-        action_keys = ["summarise", "bulletpoint_summary", "create_wordcloud", "get_quotes", "copy", "save_to_knowledgebase", "upload_file"]
+        action_keys = ["question", "summarise", "bulletpoint_summary", "create_wordcloud", "get_quotes", "copy", "save_to_knowledgebase", "upload_file"]
         actions = generate_actions(pdf_text, action_keys)
 
         model = cl.user_session.get("action_model")
@@ -119,7 +118,7 @@ async def on_action(action):
             cl.Text(name="Here are the first 200 words from the webpage:", content=extracted_text, display="inline")
         ]
 
-        action_keys = ["summarise", "bulletpoint_summary", "create_wordcloud", "get_quotes", "copy", "save_to_knowledgebase", "upload_file"]
+        action_keys = ["question", "summarise", "bulletpoint_summary", "create_wordcloud", "get_quotes", "copy", "save_to_knowledgebase", "upload_file"]
         actions = generate_actions(documents[0].text, action_keys)
 
         # Remove previous message
@@ -174,13 +173,18 @@ async def on_action(action):
 
     else:
         # Call the chain asynchronously
-        res = await llm_chain.acall(f"Write me a one paragraph summary of this text, leaving out no details:\n{action.value}", callbacks=[cb])
+        res = await llm_chain.acall(f"Write me a one paragraph summary of this text, leaving out no details. Start your answer with '**Here is your summary**:':\n{action.value}", callbacks=[cb])
+
         answer = res["text"]
 
         action_keys = ["copy", "save_to_knowledgebase", "upload_file"]
         actions = generate_actions(answer, action_keys)
 
-        await cl.Message(content=f"**Here is your summary:**\n\n{answer}\n___", actions=actions).send()
+        if cb.has_streamed_final_answer:
+            cb.final_stream.actions = actions
+            await cb.final_stream.update()
+
+        #await cl.Message(content=f"**Here is your summary:**\n\n{answer}\n___", actions=actions).send()
 
     # Optionally remove the action button from the chatbot user interface
     # await action.remove()
@@ -202,23 +206,28 @@ async def on_action(action):
 
     # Check if prompt is over token limit
     if tokens > token_limit:
+
         await cl.Message(content=f"The data is c.{format(tokens, ',')} tokens, which is {format(tokens - token_limit, ',')} too many tokens for {model}. Please select a model that allows more tokens and try again.").send()
 
     else:
         # Call the chain asynchronously
-        res = await llm_chain.acall(f"Write me a bulletpoint summary of this text:\n{action.value}", callbacks=[cb])
+        res = await llm_chain.acall(f"Write me a bulletpoint summary of this text. Start your answer with '**Here is your bulletpoint summary**:':\n{action.value}", callbacks=[cb])
         answer = res["text"]
 
         action_keys = ["copy", "save_to_knowledgebase", "upload_file"]
         actions = generate_actions(answer, action_keys)
 
-        await cl.Message(content=f"**Here is your bulletpoint summary:**\n\n{answer}\n___", actions=actions).send()
+        if cb.has_streamed_final_answer:
+            cb.final_stream.actions = actions
+            await cb.final_stream.update()
+
+        #await cl.Message(content=f"**Here is your bulletpoint summary:**\n\n{answer}\n___", actions=actions).send()
 
     # Optionally remove the action button from the chatbot user interface
     # await action.remove()
 
 ###--SAVE TO KNOWLEDGEBASE--###
-@cl.action_callback("Save To Knowledgebase")
+@cl.action_callback("Save")
 async def on_action(action):
 
     ## Add LLM query etc. here ##
@@ -362,6 +371,38 @@ async def on_action(action):
         actions = generate_actions(answer, action_keys)
 
         await cl.Message(content=f"## Here are the themes:\n\n{answer}\n___", actions=actions).send()
+
+    # Optionally remove the action button from the chatbot user interface
+    # await action.remove()
+
+###--ASK QUESTION--###
+@cl.action_callback("Question")
+async def on_action(action):
+
+    # Get current content
+    content = cl.user_session.get("content")
+
+    # Store the action content in the user session if None
+    if content is None:
+        cl.user_session.set("content", action.value)
+
+    await cl.Message("**Enter your question below:**").send()
+
+    # Optionally remove the action button from the chatbot user interface
+    # await action.remove()
+
+###--ASK ANOTHER QUESTION--###
+@cl.action_callback("Another Question")
+async def on_action(action):
+
+    # Get current content
+    content = cl.user_session.get("content")
+
+    # Store the action content in the user session if None
+    if content is None:
+        cl.user_session.set("content", action.value)
+
+    await cl.Message("**Enter your question below:**").send()
 
     # Optionally remove the action button from the chatbot user interface
     # await action.remove()

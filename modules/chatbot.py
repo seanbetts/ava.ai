@@ -49,4 +49,4 @@ async def handle_url_message(message):
         cl.Action(name="Get Website Content", value=f"{message}", description="This will get you all the text content from the website")
     ]
 
-    await cl.Message(content=f"You gave me this URL to search : {message}", actions=actions).send()
+    await cl.Message(content=f"Click below to get the website content ↓", actions=actions).send()

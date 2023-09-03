@@ -15,7 +15,7 @@ from .utils import (extract_first_200_words, generate_actions, send_file_message
 async def handle_text_file(uploaded_file, model):
     text = uploaded_file.content.decode("utf-8")
     extracted_text = extract_first_200_words(text)
-    action_keys = ["summarise", "bulletpoint_summary", "create_wordcloud", "get_themes", "get_quotes", "copy", "save_to_knowledgebase"]
+    action_keys = ["question", "summarise", "bulletpoint_summary", "create_wordcloud", "get_themes", "get_quotes", "copy", "save_to_knowledgebase"]
     await send_file_message(uploaded_file.name, text, extracted_text, model, action_keys)
 
 ##--HANDLE DOCS--##
@@ -24,7 +24,7 @@ async def handle_doc_file(uploaded_file, model):
     doc = Document(doc_content)
     doc_text = "\n".join([para.text for para in doc.paragraphs])
     extracted_text = extract_first_200_words(doc_text)
-    action_keys = ["summarise", "bulletpoint_summary", "create_wordcloud", "get_themes", "get_quotes", "copy", "save_to_knowledgebase"]
+    action_keys = ["question", "summarise", "bulletpoint_summary", "create_wordcloud", "get_themes", "get_quotes", "copy", "save_to_knowledgebase"]
     await send_file_message(uploaded_file.name, doc_text, extracted_text, model, action_keys)
 
 ##--HANDLE PDFS--##
@@ -33,7 +33,7 @@ async def handle_pdf_file(uploaded_file, model):
     pdf_reader = PyPDF2.PdfReader(pdf_content)
     pdf_text = "\n".join([page.extract_text() for page in pdf_reader.pages])
     extracted_text = extract_first_200_words(pdf_text)
-    action_keys = ["summarise", "bulletpoint_summary", "create_wordcloud", "get_themes", "get_quotes", "copy", "save_to_knowledgebase", "upload_file"]
+    action_keys = ["question", "summarise", "bulletpoint_summary", "create_wordcloud", "get_themes", "get_quotes", "copy", "save_to_knowledgebase", "upload_file"]
     await send_file_message(uploaded_file.name, pdf_text, extracted_text, model, action_keys)
 
 ##--HANDLE PPTS--##
@@ -42,7 +42,7 @@ async def handle_ppt_file(uploaded_file, model):
     presentation = Presentation(ppt_content)
     ppt_text = "\n".join([shape.text for slide in presentation.slides for shape in slide.shapes if hasattr(shape, "text")])
     extracted_text = extract_first_200_words(ppt_text)
-    action_keys = ["summarise", "bulletpoint_summary", "create_wordcloud", "get_themes", "get_quotes", "copy", "save_to_knowledgebase", "upload_file"]
+    action_keys = ["question", "summarise", "bulletpoint_summary", "create_wordcloud", "get_themes", "get_quotes", "copy", "save_to_knowledgebase", "upload_file"]
     await send_file_message(uploaded_file.name, ppt_text, extracted_text, model, action_keys)
 
 ###--HANDLE XLSXs--###
@@ -67,7 +67,7 @@ async def handle_xlsx_file(uploaded_file, model):
         cl.Text(name="Here are the top 5 rows of data:", content=markdown_content, display="inline")
     ]
 
-    action_keys = ["get_insights", "upload_file"]
+    action_keys = ["question", "get_insights", "upload_file"]
     actions = generate_actions("data", action_keys)
 
     await cl.Message(
@@ -96,7 +96,7 @@ async def handle_csv_file(uploaded_file, model):
         cl.Text(name="Here are the top 5 rows of data:", content=markdown_content, display="inline")
     ]
 
-    action_keys = ["get_insights", "upload_file"]
+    action_keys = ["question", "get_insights", "upload_file"]
     actions = generate_actions("data", action_keys)
 
     await cl.Message(

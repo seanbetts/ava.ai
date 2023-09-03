@@ -14,7 +14,7 @@ import chainlit as cl
 from chainlit.input_widget import Select, Switch, Slider
 from modules import actions
 from modules.chatbot import handle_url_message
-from modules.utils import get_token_limit
+from modules.utils import get_token_limit, generate_actions
 from modules.tools import NewsSearchTool, WikipediaSearchTool, YouTubeSearchTool, GoogleMapsSearchTool, GoogleImageSearchTool, GoogleSearchTool, SpotifySearchTool, TMDBSearchTool
 
 openai.api_key = os.environ.get("OPENAI_API_KEY") or exit("OPENAI_API_KEY not set!")
@@ -22,6 +22,10 @@ openai.api_key = os.environ.get("OPENAI_API_KEY") or exit("OPENAI_API_KEY not se
 template = """
 Question: {question}
 Answer: Let's think step by step.
+"""
+
+qna_template = """
+{question}
 """
 
 search = GoogleSearchTool()
@@ -128,14 +132,17 @@ async def start():
     chat_model = ChatOpenAI(model=settings['Chat_Model'], temperature=settings["Temperature"], streaming=settings["Streaming"])
     action_model = ChatOpenAI(model=settings['Action_Model'], temperature=settings["Temperature"], streaming=settings["Streaming"])
     prompt = PromptTemplate(template=template, input_variables=["question"])
+    qna_prompt = PromptTemplate(template=qna_template, input_variables=["question"])
     llm_chain = LLMChain(prompt=prompt, llm=action_model, verbose=True)
     agent_chain = initialize_agent(tools, chat_model, agent=AgentType.CHAT_CONVERSATIONAL_REACT_DESCRIPTION, verbose=True, memory=memory)
+    qna_chain = LLMChain(prompt=qna_prompt, llm=action_model, verbose=True)
 
     # Store the model & chain in the user session
     cl.user_session.set("chat_model", settings['Chat_Model'])
     cl.user_session.set("action_model", settings['Action_Model'])
     cl.user_session.set("llm_chain", llm_chain)
     cl.user_session.set("agent_chain", agent_chain)
+    cl.user_session.set("qna_chain", qna_chain)
 
     await cl.Avatar(
         name="seanbetts@icloud.com",
@@ -143,7 +150,7 @@ async def start():
     ).send()
     
     await cl.Avatar(
-        name="va.ai",
+        name="ava.ai",
         url="https://github.com/seanbetts/ava.ai/blob/main/assets/avatar.png?raw=true",
     ).send()
 
@@ -153,12 +160,13 @@ async def start():
 
     await asyncio.sleep(2)
     await cl.Message(
-        content=f"**👋 Hi!**\n\nI'm **Ava** and can help you with lots of different tasks.\nI can help you find answers, get content from documents or webpages, summarise content and much more.\n\nI have a **Chat Model** for when we're chatting and an **Action Model** that runs actions.\n An action runs when you click a button below a chat message.\nAn action button looks like the **Upload File** button below ↓\n\n**Just ask me a question or upload a file to get started!**\n\nYou are currently using the following settings:\n\n**Chat Model:** {settings['Chat_Model']} (max tokens of {format(get_token_limit(settings['Chat_Model']), ',')})\n**Action Model:** {settings['Action_Model']} (max tokens of {format(get_token_limit(settings['Action_Model']), ',')})\n**Temperature:** {settings['Temperature']}\n**Streaming:** {settings['Streaming']}\n\nYou can update these settings in the chatbox below ↓\n___", actions=actions).send()
+        content=f"**👋 Hi!**\n\nI'm **Ava** and can help you with lots of different tasks.\nI can help you find answers, get content from documents or webpages, summarise content and much more.\n\nI have a **Chat Model** for when we're chatting and an **Action Model** that runs actions.\n An action runs when you click a button below a chat message.\nAn action button looks like the **Upload File** button below ↓\n\n**Just ask me a question or upload a file to get started!**\n\nYou are currently using the following settings:\n\n**Chat Model:** {settings['Chat_Model']} (max tokens of {format(get_token_limit(settings['Chat_Model']), ',')})\n**Action Model:** {settings['Action_Model']} (max tokens of {format(get_token_limit(settings['Action_Model']), ',')})\n**Temperature:** {settings['Temperature']}\n**Streaming:** {settings['Streaming']}\n\nYou can update these settings on the left of the chatbox below ↓\n___", actions=actions).send()
 
 @cl.on_message
 async def main(message):
     # Retrieve the chain from the user session
     agent_chain = cl.user_session.get("agent_chain")
+    qna_chain = cl.user_session.get("qna_chain")
 
     # Empty images in user session
     cl.user_session.set("image1", None)
@@ -173,8 +181,22 @@ async def main(message):
     )
     cb.answer_reached = True
 
+    content = cl.user_session.get("content")
+
     # Detect if a URL was included in the chat message from the user
-    if "http" in message or "www" in message:
+    if content is not None:
+        # Call the chain asynchronously
+        res = qna_chain.run(f"Answer the following question based on the content below:\nQuestion: {message}\nContent: {content}", callbacks=[cb])
+
+        # Empty content from user session
+        # cl.user_session.set("content", None)
+
+        action_keys = ["another_question", "upload_file"]
+        actions = generate_actions("data", action_keys)
+
+        await cl.Message(content=f"{res}\n___", actions=actions).send()
+    
+    elif "http" in message or "www" in message:
         await handle_url_message(message)
 
     else: 
@@ -199,11 +221,8 @@ async def main(message):
         else:
             elements = []
 
-        actions = [
-            cl.Action(name="Upload File", value="temp", description="Upload any file you'd like help with"),
-        ]
-
-        # Do any post processing here
+        action_keys = ["upload_file"]
+        actions = generate_actions("data", action_keys)
 
         await cl.Message(content=f"{res}\n___", elements=elements, actions=actions).send()
 
@@ -214,18 +233,20 @@ async def setup_agent(settings):
     chat_model = ChatOpenAI(model=settings['Chat_Model'], temperature=settings["Temperature"], streaming=settings["Streaming"])
     action_model = ChatOpenAI(model=settings['Action_Model'], temperature=settings["Temperature"], streaming=settings["Streaming"])
     prompt = PromptTemplate(template=template, input_variables=["question"])
+    qna_prompt = PromptTemplate(template=qna_template, input_variables=["question"])
     llm_chain = LLMChain(prompt=prompt, llm=action_model, verbose=True)
     agent_chain = initialize_agent(tools, chat_model, agent=AgentType.CHAT_CONVERSATIONAL_REACT_DESCRIPTION, verbose=True, memory=memory)
+    qna_chain = LLMChain(prompt=qna_prompt, llm=action_model, verbose=True)
 
     # Store the model & chain in the user session
     cl.user_session.set("chat_model", settings['Chat_Model'])
     cl.user_session.set("action_model", settings['Action_Model'])
     cl.user_session.set("llm_chain", llm_chain)
     cl.user_session.set("agent_chain", agent_chain)
+    cl.user_session.set("qna_chain", qna_chain)
 
-    actions = [
-        cl.Action(name="Upload File", value="temp", description="Upload any file you'd like help with"),
-    ]
+    action_keys = ["upload_file"]
+    actions = generate_actions("data", action_keys)
 
     await cl.Message(
         content=f"You are now using the following settings:\n**Chat Model:** {settings['Chat_Model']} (max tokens of {format(get_token_limit(settings['Chat_Model']), ',')})\n**Action Model:** {settings['Action_Model']} (max tokens of {format(get_token_limit(settings['Action_Model']), ',')})\n**Temperature:** {settings['Temperature']}\n**Streaming:** {settings['Streaming']}", actions=actions).send()
