@@ -164,6 +164,13 @@ async def start():
 
 @cl.on_message
 async def main(message):
+    # Set Thinking message
+    msg = cl.Message("**🤔 Thinking...**")
+    await msg.send()
+
+    # Empty clipboard
+    cl.user_session.set("clipboard", None)
+
     # Retrieve the chain from the user session
     agent_chain = cl.user_session.get("agent_chain")
     qna_chain = cl.user_session.get("qna_chain")
@@ -191,12 +198,16 @@ async def main(message):
         # Empty content from user session
         # cl.user_session.set("content", None)
 
-        action_keys = ["another_question", "upload_file"]
+        action_keys = ["another_question", "end_questions", "copy", "save_to_knowledgebase","upload_file"]
         actions = generate_actions("data", action_keys)
 
+        cl.user_session.set("clipboard", res)
+
+        await msg.remove()
         await cl.Message(content=f"{res}\n___", actions=actions).send()
     
     elif "http" in message or "www" in message:
+        await msg.remove()
         await handle_url_message(message)
 
     else: 
@@ -221,9 +232,10 @@ async def main(message):
         else:
             elements = []
 
-        action_keys = ["upload_file"]
+        action_keys = ["copy","save_to_knowledgebase","upload_file"]
         actions = generate_actions("data", action_keys)
 
+        await msg.remove()
         await cl.Message(content=f"{res}\n___", elements=elements, actions=actions).send()
 
 @cl.on_settings_update

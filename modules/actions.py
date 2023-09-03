@@ -116,7 +116,13 @@ async def on_action(action):
 ###--COPY--###
 @cl.action_callback("Copy")
 async def on_action(action):
-    pyperclip.copy(action.value)
+    if action.value == "data":
+        data = cl.user_session.get("clipboard")
+        pyperclip.copy(data)
+        cl.user_session.set("clipboard", "")
+    
+    else:
+        pyperclip.copy(action.value)
 
     action_keys = ["upload_file"]
     actions = generate_actions("data", action_keys)
@@ -212,8 +218,13 @@ async def on_action(action):
 ###--SAVE TO KNOWLEDGEBASE--###
 @cl.action_callback("Save")
 async def on_action(action):
-
-    ## Add LLM query etc. here ##
+    if action.value == "data":
+        data = cl.user_session.get("clipboard")
+        pyperclip.copy(data)
+        cl.user_session.set("clipboard", "")
+    
+    else:
+        pyperclip.copy(action.value)
 
     action_keys = ["upload_file"]
     actions = generate_actions("data", action_keys)
@@ -369,7 +380,7 @@ async def on_action(action):
     if content is None:
         cl.user_session.set("content", action.value)
 
-    await cl.Message("**Enter your question below:**").send()
+    await cl.Message("**Enter your question below ↓**").send()
 
     # Optionally remove the action button from the chatbot user interface
     # await action.remove()
@@ -386,6 +397,18 @@ async def on_action(action):
         cl.user_session.set("content", action.value)
 
     await cl.Message("**Enter your question below:**").send()
+
+    # Optionally remove the action button from the chatbot user interface
+    # await action.remove()
+
+###--END QUESTIONS--###
+@cl.action_callback("End Questions")
+async def on_action(action):
+
+    # Delete current content
+    cl.user_session.set("content", None)
+
+    await cl.Message("**Questions ended**").send()
 
     # Optionally remove the action button from the chatbot user interface
     # await action.remove()

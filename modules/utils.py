@@ -72,6 +72,7 @@ def generate_actions(text, action_keys=[]):
     action_templates = {
         "question": {"name": "Question", "description": "Ask a question about this content"},
         "another_question": {"name": "Another Question", "description": "Ask another question about this content"},
+        "end_questions": {"name": "End Questions", "description": "End asking questions about this content"},
         "summarise": {"name": "Summarise", "description": "This will write a one paragraph summary for you"},
         "bulletpoint_summary": {"name": "Bulletpoints", "description": "This will write a bullepoint summary for you"},
         "create_wordcloud": {"name": "Wordcloud", "description": "This will create a wordcloud for you"},

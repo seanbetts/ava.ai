@@ -39,17 +39,27 @@ class NewsSearchTool(BaseTool):
         response = requests.get(url)
         json_response = response.json()
 
-        # Limit the results to the top 5 articles
+        # Limit the results to the top 10 articles
         top_10_articles = json_response['articles'][:10]
         json_response['articles'] = top_10_articles
 
-        # Generate an HTML ordered list
+        # Generate a markdown ordered list
         markdown_list_items = []
         for i, article in enumerate(top_10_articles):
             source_name = article['source'].get('name') or article['source'].get('Name') or "Unknown"
             markdown_list_items.append(f"1. {article['title']} [({source_name})]({article['url']})")
 
-        markdown_output = f"## {query}\n\n" + "\n".join(markdown_list_items)
+        markdown_output = f"## {query} News\n\n" + "\n".join(markdown_list_items)
+
+        # Generate a plain text ordered list
+        plain_text_list_items = []
+        for i, article in enumerate(top_10_articles):
+            source_name = article['source'].get('name') or article['source'].get('Name') or "Unknown"
+            plain_text_list_items.append(f"- {article['title']} ({article['url']})\n")
+
+        clipboard = "".join(plain_text_list_items)
+
+        cl.user_session.set("clipboard", clipboard)
 
         return markdown_output
 
@@ -98,7 +108,11 @@ class WikipediaSearchTool(BaseTool):
             wikiExtract = data.get('extract', 'No summary available')
             wikiImage = self.get_wiki_image(queryUnderscored, response)
 
-            markdown = f"![{wikiTitle}]({wikiImage})\n\n## [{wikiTitle}]({wikiURL})\n{wikiExtract}\n**Source:** [{wikiTitle} Wikipedia page]({wikiURL})\n___"
+            markdown = f"![{wikiTitle}]({wikiImage})\n\n## {wikiTitle}\n{wikiExtract}\n**Source:** [{wikiTitle} Wikipedia page]({wikiURL})"
+
+            clipboard = f"{wikiTitle}\n{wikiExtract}\n\nSource: {wikiURL}"
+
+            cl.user_session.set("clipboard", clipboard)
 
             return markdown
         else:
@@ -217,6 +231,15 @@ class GoogleImageSearchTool(BaseTool):
                 for idx, item in enumerate(random_items):
                     cl.user_session.set(f"image{idx + 1}", item["link"])
 
+                # Get links for clipboard
+                links = []  # Initialise an empty list to hold the links
+                for idx, item in enumerate(random_items):
+                    links.append(item["link"])  # Append each link to the list
+
+                clipboard = "\n".join(links)
+
+                cl.user_session.set("clipboard", clipboard)
+
                 return "## Here are your images:"
 
             except JSONDecodeError:
@@ -251,25 +274,59 @@ class GoogleSearchTool(BaseTool):
                 data = response.json()
                 results = data['items']
 
-                markdown_items = ''
+                MAX_ITEMS = 5  # Constant to specify maximum items to be processed
+                markdown_items = []
+
+                def extract_image_src(item):
+                    if "pagemap" in item:
+                        return item["pagemap"]["cse_image"][0]["src"] if "cse_image" in item["pagemap"] and item["pagemap"]["cse_image"] else None
+                    return None
+
+                def should_process_item(item):
+                    return item['snippet'].count('%20') <= 2
+
                 count = 0
                 for item in results:
-                    if item['snippet'].count('%20') <= 2:
-                        if "pagemap" in item:
-                            image_src = item["pagemap"]["cse_image"][0]["src"] if "cse_image" in item["pagemap"] and item["pagemap"]["cse_image"] else None
-                        else:
-                            image_src = None
-
-                        markdown_items += f"### [{item['title']}]({item['link']})\n"
+                    if should_process_item(item):
+                        image_src = extract_image_src(item)
+                        
+                        markdown_items.append(f"### [{item['title']}]({item['link']})")
+                        
                         if image_src:
-                            markdown_items += f"![{item['title']}]({image_src})\n"
-                        markdown_items += f"{item['snippet']}\n\n"
+                            markdown_items.append(f"![{item['title']}]({image_src})")
+                        
+                        markdown_items.append(f"{item['snippet']}\n")
+                        
                         count += 1
 
-                    if count == 5:
+                    if count == MAX_ITEMS:
                         break
 
                 markdown_output = f"## {query} Search Results\n{markdown_items}\n___\nSee more results [here](https://www.google.com/search?q={encoded_query}&dateRestrict=m1&safe=active)"
+
+                # Create text items for clipboard
+                text_items = []
+
+                def should_process_item(item):
+                    return item['snippet'].count('%20') <= 2
+
+                count2 = 0
+                for item in results:
+                    if should_process_item(item):
+                        text_item = f"{item['title']}\n{item['snippet']}\nSource: {item['link']}\n"
+                        
+                        text_items.append(text_item)
+                        
+                        count2 += 1
+
+                    if count2 == MAX_ITEMS:
+                        break
+
+                # Join them all to get a single string if needed
+                clipboard = '\n'.join(text_items)
+
+
+                cl.user_session.set("clipboard", clipboard)
 
                 return markdown_output
 
@@ -383,6 +440,10 @@ class TMDBSearchTool(BaseTool):
 
                     markdown_output = f"## {name}\n![{name}](https://image.tmdb.org/t/p/w600_and_h900_bestv2/{image})\n___\n### Known for:\n{known_for_images}\n\nSee info more [here](https://www.themoviedb.org/person/{id}-{url_name})"
 
+                    clipboard = f"{name}\nSource: https://www.themoviedb.org/person/{id}-{url_name}"
+
+                    cl.user_session.set("clipboard", clipboard)
+
                 elif first_item["media_type"] == "movie":
                     id = first_item["id"]
                     name = first_item["title"]
@@ -397,6 +458,10 @@ class TMDBSearchTool(BaseTool):
 
                     markdown_output = f"## {name}\n![{name}](https://image.tmdb.org/t/p/w600_and_h900_bestv2/{image})\n**RELEASE DATE**: {formatted_date}\n**TMDB RATING**: {formatted_rating}\n**Overview:** {overview}\n\nSee info more [here](https://www.themoviedb.org/movie/{id}-{url_name})"
 
+                    clipboard = f"{name}\n{overview}\nRelease Date: {formatted_date}\nTMDB Rating: {formatted_rating}\nSource: https://www.themoviedb.org/movie/{id}-{url_name}"
+
+                    cl.user_session.set("clipboard", clipboard)
+
                 elif first_item["media_type"] == "tv":
                     id = first_item["id"]
                     name = first_item["name"]
@@ -410,6 +475,10 @@ class TMDBSearchTool(BaseTool):
                     formatted_rating = "{:.1f}".format(round(rating, 1))
 
                     markdown_output = f"## {name}\n![{name}](https://image.tmdb.org/t/p/w600_and_h900_bestv2/{image})\n**RELEASE DATE**: {formatted_date}\n**TMDB RATING**: {formatted_rating}\n**Overview:** {overview}\n\nSee info more [here](https://www.themoviedb.org/tv/{id}-{url_name})"
+
+                    clipboard = f"{name}\n{overview}\nRelease Date: {formatted_date}\nTMDB Rating: {formatted_rating}\nSource: https://www.themoviedb.org/movie/{id}-{url_name}"
+
+                    cl.user_session.set("clipboard", clipboard)
 
                 return markdown_output
 
