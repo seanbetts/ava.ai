@@ -1,7 +1,8 @@
 import openai
+import os
 import streamlit as st
 
-openai.api_key = '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'
+openai.api_key = os.environ.get("OPENAI_API_KEY") or exit("OPENAI_API_KEY not set!")
 
 if "openai_model" not in st.session_state:
     st.session_state["openai_model"] = "gpt-3.5-turbo"

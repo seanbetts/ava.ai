@@ -18,10 +18,6 @@ from io import BytesIO
 ###--CREATE WORDCLOUD--###
 @cl.action_callback("Wordcloud")
 async def on_action(action):
-    # Send message to user
-    msg = cl.Message(content="Generating Wordcloud...")
-    await msg.send()
-
     # Generate the wordcloud
     wordcloud = WordCloud(colormap='cool', background_color="rgba(0, 0, 0, 0)", mode="RGBA", stopwords=STOPWORDS, width=1980, height=1080, scale=1).generate(action.value)
 
@@ -49,9 +45,6 @@ async def on_action(action):
     action_keys = ["save_to_knowledgebase", "upload_file"]
     actions = generate_actions(image_bytes, action_keys)
 
-    # Remove previous message
-    await msg.remove()
-
     # Send final message to user
     await cl.Message(content="Here's your wordcloud:", elements=elements, actions=actions).send()
 
@@ -64,10 +57,6 @@ async def on_action(action):
 ###--GET WEBSITE CONTENT--###
 @cl.action_callback("Get Website Content")
 async def on_action(action):
-    # Send message to user
-    msg = cl.Message(content="Getting website content...")
-    await msg.send()
-
     if ".pdf" in action.value:
         response = requests.get(action.value)
         response.raise_for_status()
@@ -98,9 +87,6 @@ async def on_action(action):
         token_limit = get_token_limit(model)
         is_over = is_over_token_limit(tokens, token_limit)
 
-        # Remove previous message
-        await msg.remove()
-
         # Send final message to user
         await cl.Message(
             content=f"The PDF contains {format(len(pdf_text), ',')} characters which is c.{format(tokens, ',')} tokens.\nYou're currently using the {model} model which has a token limit of {format(token_limit, ',')}.\n{is_over[1]}", elements=elements, actions=actions
@@ -120,9 +106,6 @@ async def on_action(action):
 
         action_keys = ["question", "summarise", "bulletpoint_summary", "create_wordcloud", "get_quotes", "copy", "save_to_knowledgebase", "upload_file"]
         actions = generate_actions(documents[0].text, action_keys)
-
-        # Remove previous message
-        await msg.remove()
 
         # Send final message to user
         await cl.Message(content=f"The webpage contains {format(len(documents[0].text), ',')} characters which is c.{format(tokens, ',')} tokens.\nYou're currently using the {model} model which has a token limit of {format(token_limit, ',')}.\n{is_over[1]}", elements=elements, actions=actions).send()
