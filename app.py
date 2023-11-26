@@ -108,13 +108,13 @@ async def start():
             Select(
                 id="Chat_Model",
                 label="Chat Model",
-                values=["gpt-4", "gpt-4-1106-preview", "gpt-3.5-turbo", "gpt-3.5-turbo-16k"],
+                values=["gpt-4-1106-preview", "gpt-4", "gpt-3.5-turbo", "gpt-3.5-turbo-16k"],
                 initial_index=0,
             ),
             Select(
                 id="Action_Model",
                 label="Action Model",
-                values=["gpt-4", "gpt-4-1106-preview", "gpt-3.5-turbo", "gpt-3.5-turbo-16k"],
+                values=["gpt-4-1106-preview", "gpt-4", "gpt-3.5-turbo", "gpt-3.5-turbo-16k"],
                 initial_index=0,
             ),
             Slider(
@@ -131,8 +131,8 @@ async def start():
 
     # Instantiate the chain for that user session
     memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
-    chat_model = ChatOpenAI(model=settings['Chat_Model'], temperature=settings["Temperature"], streaming=settings["Streaming"])
-    action_model = ChatOpenAI(model=settings['Action_Model'], temperature=settings["Temperature"], streaming=settings["Streaming"])
+    chat_model = ChatOpenAI(model_name=settings['Chat_Model'], temperature=settings["Temperature"], streaming=settings["Streaming"])
+    action_model = ChatOpenAI(model_name=settings['Action_Model'], temperature=settings["Temperature"], streaming=settings["Streaming"])
     prompt = PromptTemplate(template=template, input_variables=["question"])
     qna_prompt = PromptTemplate(template=qna_template, input_variables=["question"])
     llm_chain = LLMChain(prompt=prompt, llm=action_model, verbose=True)
@@ -244,8 +244,8 @@ async def main(message):
 async def setup_agent(settings):
     # Instantiate the chain for that user session
     memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
-    chat_model = ChatOpenAI(model=settings['Chat_Model'], temperature=settings["Temperature"], streaming=settings["Streaming"])
-    action_model = ChatOpenAI(model=settings['Action_Model'], temperature=settings["Temperature"], streaming=settings["Streaming"])
+    chat_model = ChatOpenAI(model_name=settings['Chat_Model'], temperature=settings["Temperature"], streaming=settings["Streaming"])
+    action_model = ChatOpenAI(model_name=settings['Action_Model'], temperature=settings["Temperature"], streaming=settings["Streaming"])
     prompt = PromptTemplate(template=template, input_variables=["question"])
     qna_prompt = PromptTemplate(template=qna_template, input_variables=["question"])
     llm_chain = LLMChain(prompt=prompt, llm=action_model, verbose=True)
@@ -263,4 +263,4 @@ async def setup_agent(settings):
     actions = generate_actions("data", action_keys)
 
     await cl.Message(
-        content=f"You are now using the following settings:\n**Chat Model:** {settings['Chat_Model']} (max tokens of {format(get_token_limit(settings['Chat_Model']), ',')})\n**Action Model:** {settings['Action_Model']} (max tokens of {format(get_token_limit(settings['Action_Model']), ',')})\n**Temperature:** {settings['Temperature']}\n**Streaming:** {settings['Streaming']}", actions=actions).send()
+        content=f"You are now using the following settings:\n**Chat Model:** {settings['Chat_Model']} (max tokens of {get_token_limit(settings['Chat_Model']):,})\n**Action Model:** {settings['Action_Model']} (max tokens of {get_token_limit(settings['Action_Model']):,})\n**Temperature:** {settings['Temperature']}\n**Streaming:** {settings['Streaming']}", actions=actions).send()
