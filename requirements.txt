@@ -17,3 +17,11 @@ openpyxl
 tabulate
 wolframalpha
 google-search-results
+
+###--DEPENDENCIES--###
+dataclasses-json==0.5.14
+fastapi==0.100
+httpx==0.23.3
+uvicorn==0.23.2
+watchfiles==0.20.0
+sqlalchemy==1.4.50

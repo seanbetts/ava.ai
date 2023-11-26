@@ -1,8 +1,8 @@
 # modules/actions.py
 
-import chainlit as cl
+from llama_index.readers import TrafilaturaWebReader
 
-from llama_index import TrafilaturaWebReader
+import chainlit as cl
 
 from modules.chatbot import handle_file_upload
 from .utils import (extract_first_200_words, num_tokens_from_string, get_token_limit, is_over_token_limit, dataframe_to_json_metadata, generate_actions)
@@ -162,7 +162,27 @@ async def on_action(action):
 
     else:
         # Call the chain asynchronously
-        res = await llm_chain.acall(f"Write me a one paragraph summary of this text, leaving out no details. Start your answer with '**Here is your summary**:':\n{action.value}", callbacks=[cb])
+        res = await llm_chain.acall(f"""
+            Act as a world class assistant. Your job is to read content and provide a high quality summary using the following context, criteria and instructions.
+            
+            ## Context
+            We are a media agency that helps clients plan and execute their marketing plans.
+            
+            ## Approach
+            Write a long form, detailed summary and don't leave out any information. Write this as if you're writing Letts revision notes, so that the reader can learn all the details in the content.
+            
+            ## Response Format
+            - Multi paragraph, long form, detailed summary covering all the details
+            - Include a bullet point summary of all the important talking points covered after the summary
+            - Always start your answer with '**Here is your summary**:'
+        
+            ## Instructions
+            Review the following content and return a high quality summary.
+                                    
+            ```
+            {action.value}   
+            ```
+            """, callbacks=[cb])
 
         answer = res["text"]
 
@@ -200,7 +220,27 @@ async def on_action(action):
 
     else:
         # Call the chain asynchronously
-        res = await llm_chain.acall(f"Write me a bulletpoint summary of this text. Start your answer with '**Here is your bulletpoint summary**:':\n{action.value}", callbacks=[cb])
+        res = await llm_chain.acall(f"""
+            Act as a world class assistant. Your job is to read content and provide a high quality summary using the following context, criteria and instructions.
+            
+            ## Context
+            We are a media agency that helps clients plan and execute their marketing plans.
+            
+            ## Approach
+            Use the Inverted Pyramid method to create your summary. This method involves structuring the summary with the most important information at the beginning and gradually decreasing in importance as the summary progresses. The reader gets the key points and main takeaways immediately, and less critical details are provided afterward.
+            
+            ## Response Format
+            - Concise bullet points
+            - Always start your answer with '**Here is your summary**:'
+        
+            ## Instructions
+            Review the following content and return a high quality summary.
+                                    
+            ```
+            {action.value}   
+            ```
+            """, callbacks=[cb])
+
         answer = res["text"]
 
         action_keys = ["copy", "save_to_knowledgebase", "upload_file"]
@@ -358,7 +398,28 @@ async def on_action(action):
 
     else:
         # Call the chain asynchronously
-        res = await llm_chain.acall(f"Create a bulletpoint list of the main themes that are in this text:\n{action.value}", callbacks=[cb])
+        res = await llm_chain.acall(f"""
+            Act as a world class assistant. Your job is to read content and provide a high quality summary using the following context, criteria and instructions.
+            
+            ## Context
+            We are a media agency that helps clients plan and execute their marketing plans.
+            
+            ## Approach
+            Create a list of the main themes covered in the content and add detailed bulletpoints where relevant.
+            
+            ## Response Format
+            - Concise bullet points
+            - Always start your answer with '**Here are the themes**:'
+        
+            ## Instructions
+            Review the following content and return a high quality summary.
+                                    
+            ```
+            {action.value}   
+            ```
+            """, callbacks=[cb])
+
+
         answer = res["text"]
 
         action_keys = ["copy", "save_to_knowledgebase", "upload_file"]

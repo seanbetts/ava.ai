@@ -7,7 +7,9 @@ from langchain.agents import AgentType
 from langchain.memory import ConversationBufferMemory
 from langchain.chat_models import ChatOpenAI
 from langchain.agents import initialize_agent
-from langchain import PromptTemplate, LLMChain
+## from langchain import PromptTemplate, LLMChain
+from langchain.prompts import PromptTemplate
+from langchain.chains import LLMChain
 from langchain.utilities.wolfram_alpha import WolframAlphaAPIWrapper
 
 import chainlit as cl
@@ -106,13 +108,13 @@ async def start():
             Select(
                 id="Chat_Model",
                 label="Chat Model",
-                values=["gpt-3.5-turbo", "gpt-3.5-turbo-16k", "gpt-4"],
+                values=["gpt-4", "gpt-4-1106-preview", "gpt-3.5-turbo", "gpt-3.5-turbo-16k"],
                 initial_index=0,
             ),
             Select(
                 id="Action_Model",
                 label="Action Model",
-                values=["gpt-3.5-turbo", "gpt-3.5-turbo-16k", "gpt-4"],
+                values=["gpt-4", "gpt-4-1106-preview", "gpt-3.5-turbo", "gpt-3.5-turbo-16k"],
                 initial_index=0,
             ),
             Slider(
@@ -158,9 +160,9 @@ async def start():
         cl.Action(name="Upload File", value="temp", description="Upload any file you'd like help with"),
     ]
 
-    await asyncio.sleep(2)
+    await asyncio.sleep(5)
     await cl.Message(
-        content=f"**👋 Hi!**\n\nI'm **Ava** and can help you with lots of different tasks.\nI can help you find answers, get content from documents or webpages, summarise content and much more.\n\nI have a **Chat Model** for when we're chatting and an **Action Model** that runs actions.\n An action runs when you click a button below a chat message.\nAn action button looks like the **Upload File** button below ↓\n\n**Just ask me a question or upload a file to get started!**\n\nYou are currently using the following settings:\n\n**Chat Model:** {settings['Chat_Model']} (max tokens of {format(get_token_limit(settings['Chat_Model']), ',')})\n**Action Model:** {settings['Action_Model']} (max tokens of {format(get_token_limit(settings['Action_Model']), ',')})\n**Temperature:** {settings['Temperature']}\n**Streaming:** {settings['Streaming']}\n\nYou can update these settings on the left of the chatbox below ↓\n___", actions=actions).send()
+        content=f"**👋 Hi!**\n\nI'm **Ava** and can help you with lots of different tasks.\nI can help you find answers, get content from documents or webpages, summarise content and much more.\n\nI have a **Chat Model** for when we're chatting and an **Action Model** that runs actions.\n An action runs when you click a button below a chat message.\nAn action button looks like the **Upload File** button below ↓\n\n**Just ask me a question or upload a file to get started!**\n\nYou are currently using the following settings:\n\n**Chat Model:** {settings['Chat_Model']} (max tokens of {get_token_limit(settings['Action_Model']):,})\n**Action Model:** {settings['Action_Model']} (max tokens of {get_token_limit(settings['Chat_Model']):,})\n**Temperature:** {settings['Temperature']}\n**Streaming:** {settings['Streaming']}\n\nYou can update these settings on the left of the chatbox below ↓\n___", actions=actions).send()
 
 @cl.on_message
 async def main(message):
@@ -206,13 +208,13 @@ async def main(message):
         await msg.remove()
         await cl.Message(content=f"{res}\n___", actions=actions).send()
     
-    elif "http" in message or "www" in message:
+    elif "http" in message.content or "www" in message.content:
         await msg.remove()
-        await handle_url_message(message)
+        await handle_url_message(message.content)
 
     else: 
          # Call the chain asynchronously
-        res = agent_chain.run(message, callbacks=[cb])
+        res = agent_chain.run(message.content, callbacks=[cb])
 
         if "Here are your images:" in res:
             image1 = cl.user_session.get("image1")
